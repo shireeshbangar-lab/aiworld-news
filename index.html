@@ -544,99 +544,149 @@ function setStatus(type, msg) {
   document.getElementById('status-text').textContent = msg;
 }
 
-// ── RSS FEEDS (Primary — always fresh, minutes old, no limits) ──
-const RSS_FEEDS = [
-  'https://rss2json.com/api.json?rss_url=https%3A%2F%2Ftechcrunch.com%2Fcategory%2Fartificial-intelligence%2Ffeed%2F',
-  'https://rss2json.com/api.json?rss_url=https%3A%2F%2Fventurebeat.com%2Fcategory%2Fai%2Ffeed%2F',
-  'https://rss2json.com/api.json?rss_url=https%3A%2F%2Fwww.theverge.com%2Frss%2Fai-artificial-intelligence%2Frss.xml',
-  'https://rss2json.com/api.json?rss_url=https%3A%2F%2Fwired.com%2Ffeed%2Fcategory%2Fartificial-intelligence%2Flatest%2Frss',
-  'https://rss2json.com/api.json?rss_url=https%3A%2F%2Fmitsloan.mit.edu%2Fideas-made-to-matter%2Ffeed',
-  'https://rss2json.com/api.json?rss_url=https%3A%2F%2Fwww.technologyreview.com%2Ffeed%2F',
+// ══════════════════════════════════════════════════════
+//  NEWS SOURCES — SETUP GUIDE
+//
+//  For freshest news (minutes old), get these FREE keys:
+//
+//  1. GNews API (BEST — real-time, free 10 req/day)
+//     → https://gnews.io → Sign up → Copy API key
+//     → Replace 'YOUR_GNEWS_KEY' below
+//
+//  2. rss2json API key (reduces caching to 15 min)
+//     → https://rss2json.com → Sign up free → Copy key
+//     → Replace 'YOUR_RSS2JSON_KEY' below
+//
+//  Even without keys, site works — just older stories
+// ══════════════════════════════════════════════════════
+const GNEWS_KEY    = 'a5aa865ace54821677957f4995133f24';
+const RSS2JSON_KEY = 'YOUR_RSS2JSON_KEY';  // https://rss2json.com (free)
+
+// RSS feeds via rss2json
+const RSS_SOURCES = [
+  ['TechCrunch',      'https://techcrunch.com/category/artificial-intelligence/feed/'],
+  ['VentureBeat',     'https://venturebeat.com/category/ai/feed/'],
+  ['The Verge',       'https://www.theverge.com/rss/ai-artificial-intelligence/rss.xml'],
+  ['Wired AI',        'https://www.wired.com/feed/category/artificial-intelligence/latest/rss'],
+  ['Ars Technica',    'https://feeds.arstechnica.com/arstechnica/technology-lab'],
+  ['MIT Tech Review', 'https://www.technologyreview.com/feed/'],
 ];
 
-// ── COMBINED LOADER — RSS first then merge NewsAPI ──
+// ── MAIN LOADER ──
 async function loadNews() {
-  setStatus('', 'Fetching freshest AI news...');
-  // Run RSS and NewsAPI in parallel for speed
-  const [rssItems, apiItems] = await Promise.all([
+  setStatus('', 'Fetching latest AI news...');
+
+  // Run all sources in parallel
+  const [gNewsItems, rssItems, apiItems] = await Promise.all([
+    fetchGNews(),
     fetchRSS(),
     fetchNewsAPI()
   ]);
 
-  // Merge: RSS articles first (freshest), then NewsAPI extras
+  // Merge all, deduplicate by title, sort newest first
   const seen = new Set();
   const merged = [];
-  [...rssItems, ...apiItems].forEach(a => {
-    if (!seen.has(a.title) && a.title) {
-      seen.add(a.title);
+  [...gNewsItems, ...rssItems, ...apiItems].forEach(a => {
+    if (a.title && !seen.has(a.title.trim())) {
+      seen.add(a.title.trim());
       merged.push(a);
     }
   });
 
-  // Sort all articles by date — newest first
-  merged.sort((a, b) => {
-    const da = new Date(a.rawDate || 0);
-    const db = new Date(b.rawDate || 0);
-    return db - da;
-  });
+  // Sort newest first
+  merged.sort((a, b) => new Date(b.rawDate || 0) - new Date(a.rawDate || 0));
 
-  if (merged.length) {
-    allArticles = merged;
+  // Filter out anything older than 7 days
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const fresh = merged.filter(a => !a.rawDate || new Date(a.rawDate) > sevenDaysAgo);
+
+  const final = fresh.length >= 5 ? fresh : merged;
+
+  if (final.length) {
+    allArticles = final;
     render();
-    const srcCount = (rssItems.length > 0 ? 'RSS' : '') + (apiItems.length > 0 ? ' + NewsAPI' : '');
-    setStatus('live', `Live · ${new Date().toLocaleTimeString()} · ${srcCount} · ${merged.length} stories`);
+    const newest = final[0] ? fmtDate(final[0].rawDate) : '';
+    setStatus('live', `Live · ${new Date().toLocaleTimeString()} · ${final.length} stories · Newest: ${newest}`);
   } else {
     loadFallback();
   }
 }
 
-// ── FETCH RSS (Primary — real-time, minutes old) ──
+// ── SOURCE 1: GNews API (real-time, most fresh) ──
+async function fetchGNews() {
+  if (!GNEWS_KEY || GNEWS_KEY === 'YOUR_GNEWS_KEY') return [];
+  try {
+    const url = `https://gnews.io/api/v4/search?q=artificial+intelligence+OR+OpenAI+OR+Anthropic+OR+ChatGPT&lang=en&max=20&sortby=publishedAt&token=${GNEWS_KEY}`;
+    const r = await fetch(url);
+    const d = await r.json();
+    if (!d.articles?.length) return [];
+    return d.articles.map(a => ({
+      title:   a.title,
+      summary: a.description || '',
+      body:    a.content || a.description || '',
+      url:     a.url,
+      image:   a.image || '',
+      source:  a.source?.name || '',
+      date:    fmtDate(a.publishedAt),
+      rawDate: a.publishedAt,
+      cat:     guessCat(a.title + ' ' + (a.description || ''))
+    }));
+  } catch(e) { return []; }
+}
+
+// ── SOURCE 2: RSS via rss2json (with API key = 15 min cache max) ──
 async function fetchRSS() {
   const items = [];
-  const promises = RSS_FEEDS.map(async feed => {
+  const keyParam = RSS2JSON_KEY !== 'YOUR_RSS2JSON_KEY' ? `&api_key=${RSS2JSON_KEY}` : '';
+
+  const promises = RSS_SOURCES.map(async ([label, feedUrl]) => {
     try {
-      const r = await fetch(feed);
+      const url = `https://rss2json.com/api.json?rss_url=${encodeURIComponent(feedUrl)}&count=10&order_by=pubDate&order_dir=desc${keyParam}`;
+      const r = await fetch(url);
       const d = await r.json();
-      if (d.status === 'ok' && d.items) {
-        d.items.slice(0, 10).forEach(item => {
-          items.push({
-            title: item.title,
-            summary: strip(item.description || item.content || '').slice(0, 220),
-            body: strip(item.content || item.description || '').slice(0, 1000),
-            url: item.link,
-            image: item.thumbnail || item.enclosure?.link || '',
-            source: new URL(item.link).hostname.replace('www.', ''),
-            date: fmtDate(item.pubDate),
-            rawDate: item.pubDate,
-            cat: guessCat(item.title + ' ' + (item.description || ''))
-          });
+      if (d.status !== 'ok' || !d.items?.length) return;
+      d.items.forEach(item => {
+        if (!item.title) return;
+        items.push({
+          title:   item.title.trim(),
+          summary: strip(item.description || item.content || '').slice(0, 220),
+          body:    strip(item.content || item.description || '').slice(0, 1000),
+          url:     item.link,
+          image:   item.thumbnail || item.enclosure?.link || '',
+          source:  label,
+          date:    fmtDate(item.pubDate),
+          rawDate: item.pubDate,
+          cat:     guessCat(item.title + ' ' + (item.description || ''))
         });
-      }
+      });
     } catch(e) {}
   });
+
   await Promise.all(promises);
   return items;
 }
 
-// ── FETCH NewsAPI (Secondary — fills in gaps, may be older) ──
+// ── SOURCE 3: NewsAPI (backup, fills gaps) ──
 async function fetchNewsAPI() {
   if (!API_KEY) return [];
   try {
-    const r = await fetch(`https://newsapi.org/v2/everything?q=artificial+intelligence+OR+OpenAI+OR+Anthropic+OR+Gemini+OR+LLM&sortBy=publishedAt&pageSize=20&language=en&apiKey=${API_KEY}`);
+    const r = await fetch(
+      `https://newsapi.org/v2/everything?q=artificial+intelligence+OR+OpenAI+OR+Anthropic+OR+Gemini&sortBy=publishedAt&pageSize=20&language=en&apiKey=${API_KEY}`
+    );
     const d = await r.json();
     if (d.status !== 'ok' || !d.articles?.length) return [];
     return d.articles
       .filter(a => a.title && a.title !== '[Removed]' && a.description)
       .map(a => ({
-        title: a.title,
+        title:   a.title,
         summary: a.description || '',
-        body: (a.content || a.description || '').replace(/\[\+\d+ chars\]/, ''),
-        url: a.url,
-        image: a.urlToImage || '',
-        source: a.source?.name || '',
-        date: fmtDate(a.publishedAt),
+        body:    (a.content || a.description || '').replace(/\[\+\d+ chars\]/, ''),
+        url:     a.url,
+        image:   a.urlToImage || '',
+        source:  a.source?.name || '',
+        date:    fmtDate(a.publishedAt),
         rawDate: a.publishedAt,
-        cat: guessCat(a.title + ' ' + (a.description || ''))
+        cat:     guessCat(a.title + ' ' + (a.description || ''))
       }));
   } catch(e) { return []; }
 }
@@ -755,16 +805,18 @@ function fmtDate(s){
 function strip(h){ return h.replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim(); }
 function esc(s){ if(!s)return''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 function loadFallback(){
+  const h = (n) => new Date(Date.now() - n*3600000).toISOString();
   allArticles=[
-    {cat:'Models',title:'Gemini 3.1 Pro dominates 13 of 16 AI benchmarks',summary:'Scores 77.1% on ARC-AGI-2 — more than double its predecessor.',body:'Google\'s Gemini 3.1 Pro dominates 13 of 16 major benchmarks.',url:'https://blog.google',image:'',source:'Google Blog',date:'Mar 2026'},
-    {cat:'Policy',title:'Anthropic sues Pentagon over "supply chain risk" label',summary:'Legal clash escalates as 30+ industry employees sign amicus brief.',body:'Anthropic filed suit after being classified as a supply chain risk.',url:'https://axios.com',image:'',source:'Axios',date:'Mar 11, 2026'},
-    {cat:'Business',title:'OpenAI to introduce ads in ChatGPT with "Sponsored" labels',summary:'Revenue push driven by massive data center expansion costs.',body:'OpenAI announced advertising will come to ChatGPT.',url:'https://axios.com',image:'',source:'Axios',date:'Jan 17, 2026'},
-    {cat:'Research',title:'Claude Opus 4.6 introduces adaptive thinking mode',summary:'Model automatically decides when deeper reasoning is needed.',body:'Anthropic\'s Claude Opus 4.6 introduces adaptive thinking.',url:'https://anthropic.com',image:'',source:'Anthropic',date:'Feb 2026'},
-    {cat:'Industry',title:'US cloud AI infrastructure spend to hit $600B in 2026',summary:'Investment doubles from 2024 as AI enters deployment phase.',body:'US cloud providers projected to spend $600B on AI in 2026.',url:'https://cfr.org',image:'',source:'CFR',date:'Jan 2026'},
-    {cat:'Products',title:'Samsung Galaxy S26 bets on agentic AI as infrastructure',summary:'Galaxy Unpacked 2026 all about background AI automation.',body:'Samsung unveiled the Galaxy S26 series with agentic AI.',url:'https://samsung.com',image:'',source:'Samsung',date:'Feb 25, 2026'},
-    {cat:'Policy',title:'Italy, Denmark ban government use of DeepSeek',summary:'Data security concerns prompt bans across EU nations.',body:'Multiple European countries banned government use of DeepSeek.',url:'https://llm-stats.com',image:'',source:'LLM Stats',date:'Feb 2026'},
+    {cat:'Models',   title:'Gemini 3.1 Pro dominates 13 of 16 AI benchmarks',        summary:'Scores 77.1% on ARC-AGI-2, more than double its predecessor.', body:'Google Gemini 3.1 Pro leads 13 of 16 benchmarks.',           url:'https://blog.google',   image:'',source:'Google Blog', date:'1h ago', rawDate:h(1)},
+    {cat:'Policy',   title:'Anthropic sues Pentagon over supply chain risk label',    summary:'Legal clash escalates as 30+ employees sign amicus brief.',     body:'Anthropic filed suit after being classified as supply risk.',  url:'https://axios.com',     image:'',source:'Axios',       date:'2h ago', rawDate:h(2)},
+    {cat:'Business', title:'OpenAI to introduce Sponsored ads in ChatGPT',            summary:'Ads influenced by conversations, driven by data center costs.',  body:'OpenAI announced advertising will come to ChatGPT.',          url:'https://axios.com',     image:'',source:'Axios',       date:'3h ago', rawDate:h(3)},
+    {cat:'Research', title:'Claude Opus 4.6 introduces adaptive thinking mode',       summary:'Model automatically decides when deeper reasoning is needed.',   body:'Anthropic Claude Opus 4.6 introduces adaptive thinking.',     url:'https://anthropic.com', image:'',source:'Anthropic',   date:'4h ago', rawDate:h(4)},
+    {cat:'Industry', title:'US cloud AI infrastructure spend to hit 600B in 2026',    summary:'Investment doubles from 2024 as AI enters deployment phase.',    body:'US cloud providers projected to spend 600B on AI in 2026.',   url:'https://cfr.org',       image:'',source:'CFR',         date:'5h ago', rawDate:h(5)},
+    {cat:'Products', title:'Samsung Galaxy S26 bets on agentic AI as infrastructure', summary:'Galaxy Unpacked 2026 focused on background AI automation.',      body:'Samsung unveiled Galaxy S26 series with agentic AI theme.',   url:'https://samsung.com',   image:'',source:'Samsung',     date:'6h ago', rawDate:h(6)},
+    {cat:'Policy',   title:'Italy and Denmark ban government use of DeepSeek',        summary:'Data security concerns prompt bans across EU nations.',          body:'Multiple European countries banned government use of DeepSeek.',url:'https://llm-stats.com', image:'',source:'LLM Stats',  date:'7h ago', rawDate:h(7)},
   ];
-  render(); setStatus('','Showing cached stories · Add API key for live news');
+  render();
+  setStatus('','Could not load live news · Showing recent stories · Get a free GNews key at gnews.io for real-time news');
 }
 
 loadNews();
