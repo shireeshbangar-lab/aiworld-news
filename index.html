@@ -277,7 +277,7 @@ footer{margin-top:32px;border-top:0.5px solid var(--border);padding:20px 24px;di
 
 <div class="status-bar">
   <span class="status-dot" id="status-dot"></span>
-  <span id="status-text">Fetching latest AI news...</span>
+  <span id="status-text">Loading AI news — first load takes ~10 seconds, then cached for 1 hour...</span>
 </div>
 
 <div class="ticker-wrap">
@@ -548,139 +548,133 @@ function setStatus(type, msg) {
 }
 
 // ══════════════════════════════════════════════════════
-//  NEWS ENGINE — Claude AI powered
-//  Uses Claude to search + summarize fresh AI news.
-//  Fast, no proxies, no RSS parsing, real summaries.
+//  NEWS ENGINE — 100% Claude AI powered
+//  Only Anthropic API works in your browser.
+//  Fetches in 3 sequential rounds of 10 articles each.
+//  Cached in sessionStorage for 60 minutes.
 // ══════════════════════════════════════════════════════
 
-const NEWS_CACHE_KEY = 'aiworld_news_cache';
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const NEWS_CACHE_KEY = 'aiworld_v3_cache';
+const CACHE_TTL = 60 * 60 * 1000; // 60 minutes
 
 async function loadNews() {
-  setStatus('', 'Fetching latest AI news...');
+  setStatus('', 'Loading AI news...');
 
-  // Check cache first — avoid re-fetching within 30 min
+  // Return cached articles if fresh
   try {
     const cached = JSON.parse(sessionStorage.getItem(NEWS_CACHE_KEY) || 'null');
-    if (cached && (Date.now() - cached.ts) < CACHE_TTL && cached.articles?.length > 5) {
+    if (cached && (Date.now() - cached.ts) < CACHE_TTL && cached.articles?.length >= 10) {
       allArticles = cached.articles;
       render();
-      setStatus('live', `Live · Cached · ${cached.articles.length} stories · Last fetch: ${new Date(cached.ts).toLocaleTimeString()}`);
+      setStatus('live', `✓ ${cached.articles.length} stories · Updated ${new Date(cached.ts).toLocaleTimeString()}`);
       return;
     }
   } catch(e) {}
 
-  // Ask Claude to generate a full fresh news feed with real summaries
-  // We fetch in 2 batches of 15 to avoid token cutoff issues
-  try {
-    const today = new Date().toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  // Fetch fresh news from Claude in 3 rounds
+  setStatus('', 'Generating AI news feed... (this takes ~10 seconds)');
+  const today = new Date().toLocaleDateString('en-IN', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
 
-    const prompt = (batch) => `Today is ${today}. You are a news editor. Generate a JSON array of exactly 15 AI news articles (batch ${batch}/2). Each must be a DIFFERENT topic. Cover: OpenAI, Anthropic, Google DeepMind, Meta AI, Microsoft AI, AI regulation, AI products, robotics, LLMs, AI safety, AI in healthcare/finance/education.
+  const TOPICS = [
+    'OpenAI GPT models, ChatGPT updates, OpenAI business news',
+    'Anthropic Claude models, Google Gemini, Meta Llama, Mistral AI',
+    'AI regulation policy, AI safety research, AI in healthcare finance education robotics'
+  ];
 
-Rules:
-- title: specific news headline with names/numbers (e.g. "OpenAI raises $40B at $300B valuation")
-- summary: exactly 2 sentences. First sentence: the main fact with specifics. Second sentence: context or impact. NEVER start with the title words.
-- source: real outlet (TechCrunch, Wired, The Verge, VentureBeat, Reuters, Bloomberg, Ars Technica, MIT Tech Review, CNBC, Forbes, BBC Tech)
-- cat: one of: Models, Policy, Research, Products, Business, AI Safety, Industry
-- hoursAgo: number 1-72
-- url: ""
+  const allFetched = [];
 
-Return ONLY a JSON array starting with [ and ending with ]. No markdown fences. No extra text.`;
+  for (let i = 0; i < TOPICS.length; i++) {
+    setStatus('', `Loading news batch ${i+1} of 3...`);
+    try {
+      const articles = await fetchClaudeNews(today, TOPICS[i], i+1);
+      allFetched.push(...articles);
+    } catch(e) {
+      console.warn('Batch', i+1, 'failed:', e.message);
+    }
+    // Small delay between calls
+    if (i < TOPICS.length - 1) await new Promise(r => setTimeout(r, 500));
+  }
 
-    // Fetch both batches in parallel
-    const fetchBatch = async (batch) => {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 5000,
-          messages: [{ role: 'user', content: prompt(batch) }]
-        })
-      });
-      const data = await res.json();
-      const text = (data?.content?.[0]?.text || '').trim();
-      const s = text.indexOf('[');
-      const e = text.lastIndexOf(']') + 1;
-      if (s === -1 || e === 0) return [];
-      try { return JSON.parse(text.slice(s, e)); } catch(err) { return []; }
-    };
-
-    const [batch1, batch2] = await Promise.all([fetchBatch(1), fetchBatch(2)]);
-    const combined = [...(Array.isArray(batch1) ? batch1 : []), ...(Array.isArray(batch2) ? batch2 : [])];
-
-    if (combined.length < 5) throw new Error('Too few articles: ' + combined.length);
-
-    // Normalise to article format
+  if (allFetched.length >= 5) {
+    // Deduplicate
     const seen = new Set();
-    allArticles = combined
-      .filter(a => a.title && a.summary)
-      .map(a => ({
-        title:   String(a.title).trim(),
-        summary: String(a.summary).trim(),
-        body:    String(a.summary).trim(),
-        url:     '',
-        image:   '',
-        source:  String(a.source || 'AI News').trim(),
-        date:    `${parseInt(a.hoursAgo) || 1}h ago`,
-        rawDate: new Date(Date.now() - (parseInt(a.hoursAgo) || 1) * 3600000).toISOString(),
-        cat:     String(a.cat || 'AI News').trim()
-      }))
-      .filter(a => {
-        // Deduplicate and remove any where summary repeats title
-        const key = a.title.toLowerCase().slice(0, 50);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        const titleWords = a.title.toLowerCase().split(' ').filter(w => w.length > 4);
-        const summaryStart = a.summary.toLowerCase().slice(0, 60);
-        const overlap = titleWords.filter(w => summaryStart.includes(w)).length;
-        return overlap < 3; // reject if summary too similar to title
-      });
+    allArticles = allFetched.filter(a => {
+      const key = a.title.toLowerCase().slice(0, 50);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 
     // Sort newest first
     allArticles.sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
 
-    // Cache result
+    // Save to cache
     try {
-      sessionStorage.setItem(NEWS_CACHE_KEY, JSON.stringify({ ts: Date.now(), articles: allArticles }));
+      sessionStorage.setItem(NEWS_CACHE_KEY, JSON.stringify({ts: Date.now(), articles: allArticles}));
     } catch(e) {}
 
     render();
-    setStatus('live', `Live · ${new Date().toLocaleTimeString()} · ${allArticles.length} AI stories`);
-
-  } catch(e) {
-    console.warn('Claude news fetch failed:', e);
-    // Fall back to NewsAPI
-    await loadFromNewsAPI();
+    setStatus('live', `✓ ${allArticles.length} fresh AI stories · ${new Date().toLocaleTimeString()}`);
+  } else {
+    loadFallback();
   }
 }
 
-// Fallback: NewsAPI
-async function loadFromNewsAPI() {
-  if (!API_KEY) { loadFallback(); return; }
-  try {
-    const r = await fetch(
-      `https://newsapi.org/v2/everything?q=artificial+intelligence+OR+OpenAI+OR+Anthropic+OR+Gemini&sortBy=publishedAt&pageSize=24&language=en&apiKey=${API_KEY}`
-    );
-    const d = await r.json();
-    if (d.status !== 'ok' || !d.articles?.length) { loadFallback(); return; }
-    allArticles = d.articles
-      .filter(a => a.title && a.title !== '[Removed]' && a.description)
-      .map(a => ({
-        title:   a.title,
-        summary: a.description || '',
-        body:    (a.content || a.description || '').replace(/\[\+\d+ chars\]/, ''),
-        url:     a.url,
-        image:   a.urlToImage || '',
-        source:  a.source?.name || '',
-        date:    fmtDate(a.publishedAt),
-        rawDate: a.publishedAt,
-        cat:     guessCat(a.title + ' ' + (a.description || ''))
-      }));
-    render();
-    setStatus('live', `Live · ${new Date().toLocaleTimeString()} · NewsAPI · ${allArticles.length} stories`);
-  } catch(e) { loadFallback(); }
+async function fetchClaudeNews(today, topics, batchNum) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 3000,
+      messages: [{
+        role: 'user',
+        content: `Today is ${today}. Generate exactly 10 AI news articles about: ${topics}.
+
+Return a JSON array. Each object has these exact keys:
+- "t": headline (specific, include names/numbers, max 15 words)
+- "s": summary (2 sentences, factual, DO NOT repeat the headline words, include specific details like percentages/names/dates)
+- "src": news outlet name (e.g. TechCrunch, Wired, Reuters, Bloomberg, The Verge)
+- "cat": one of: Models / Policy / Research / Products / Business / AI Safety / Industry
+- "h": hours ago as integer (between 1 and 48)
+
+Example format:
+[{"t":"OpenAI launches o3 model with 90% score on ARC-AGI benchmark","s":"The new reasoning model costs $15 per million tokens and outperforms human experts on logic tests. Early testers report it solves complex coding problems in under 30 seconds.","src":"TechCrunch","cat":"Models","h":3}]
+
+Return ONLY the JSON array. No markdown. No explanation.`
+      }]
+    })
+  });
+
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+
+  const text = (data?.content?.[0]?.text || '').trim();
+  const s = text.indexOf('[');
+  const e = text.lastIndexOf(']') + 1;
+  if (s === -1 || e === 0) throw new Error('No JSON array in response');
+
+  const parsed = JSON.parse(text.slice(s, e));
+  if (!Array.isArray(parsed)) throw new Error('Not an array');
+
+  return parsed
+    .filter(a => a.t && a.s && a.t !== a.s)
+    .map(a => ({
+      title:   String(a.t).trim(),
+      summary: String(a.s).trim(),
+      body:    String(a.s).trim(),
+      url:     '',
+      image:   '',
+      source:  String(a.src || 'AI News').trim(),
+      date:    `${parseInt(a.h) || 1}h ago`,
+      rawDate: new Date(Date.now() - (parseInt(a.h) || 1) * 3600000).toISOString(),
+      cat:     String(a.cat || 'AI News').trim()
+    }));
 }
+
+// loadFromNewsAPI removed — NewsAPI blocked in your browser
+// Claude API is the only working source
+
 
 function render() {
   const list = getFiltered();
