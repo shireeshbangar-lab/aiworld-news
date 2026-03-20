@@ -542,13 +542,14 @@ function showToast(msg) {
 }
 
 // ── NEWS ─────────────────────────────────────────────────────
-let API_KEY = localStorage.getItem('aiworld_key') || '';
+let API_KEY = localStorage.getItem('aiworld_key') || 'eee266e27ea84439a29b4549a417c93d';
 let allArticles = [], currentFilter = 'all';
 
 document.getElementById('live-date').textContent =
   new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ' · AI World News';
 
-if (API_KEY) document.getElementById('api-banner').style.display = 'none';
+// API key is pre-configured — hide the banner automatically
+document.getElementById('api-banner').style.display = 'none';
 
 function saveApiKey() {
   const k = document.getElementById('api-key-input').value.trim();
