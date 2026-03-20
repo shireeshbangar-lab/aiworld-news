@@ -567,7 +567,12 @@ const GOOGLE_NEWS_FEEDS = [
 ];
 
 // CORS proxy to fetch Google News RSS from browser
-const PROXY = 'https://api.allorigins.win/get?url=';
+// Multiple CORS proxies — tries each one until one works
+const PROXIES = [
+  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
 
 async function loadNews() {
   setStatus('', 'Fetching latest AI news from Google News...');
@@ -611,40 +616,56 @@ async function loadNews() {
 }
 
 async function fetchGoogleFeed({ label, url }) {
-  try {
-    const proxyUrl = PROXY + encodeURIComponent(url);
-    const r = await fetch(proxyUrl, { cache: 'no-store' });
-    const data = await r.json();
-    const xml = data.contents;
-    if (!xml) return [];
+  for (const proxyFn of PROXIES) {
+    try {
+      const proxyUrl = proxyFn(url);
+      const r = await fetch(proxyUrl, { cache: 'no-store' });
+      if (!r.ok) continue;
+      const data = await r.json();
+      // allorigins returns {contents:...}, codetabs returns raw text
+      const xml = data.contents || (typeof data === 'string' ? data : null);
+      if (!xml || xml.length < 100) continue;
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(xml, 'text/xml');
-    const items = [...doc.querySelectorAll('item')].slice(0, 8);
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xml, 'text/xml');
+      const items = [...doc.querySelectorAll('item')].slice(0, 8);
+      if (!items.length) continue;
 
-    return items.map(el => {
-      const title   = el.querySelector('title')?.textContent?.trim() || '';
-      const link    = el.querySelector('link')?.textContent?.trim() || '';
-      const pubDate = el.querySelector('pubDate')?.textContent?.trim() || '';
-      const source  = el.querySelector('source')?.textContent?.trim() || label;
-      // Google News wraps description in CDATA with publisher info
-      const desc    = strip(el.querySelector('description')?.textContent || '').slice(0, 220);
+      const results = items.map(el => {
+        const title   = el.querySelector('title')?.textContent?.trim() || '';
+        const link    = el.querySelector('link')?.textContent?.trim() || '';
+        const pubDate = el.querySelector('pubDate')?.textContent?.trim() || '';
+        const srcEl   = el.querySelector('source');
+        const source  = srcEl?.textContent?.trim() || label;
+        // Google News puts full article description in the description tag
+        const rawDesc = el.querySelector('description')?.textContent || '';
+        const desc    = strip(rawDesc).replace(/^[^.!?]*?:\s*/,'').trim();
+        // Clean title: remove " - Publisher" suffix Google adds
+        const cleanTitle = title.replace(/\s*-\s*[^-]{3,40}$/, '').trim();
 
-      if (!title || title.length < 10) return null;
+        if (!cleanTitle || cleanTitle.length < 10) return null;
 
-      return {
-        title:   title.replace(/ - [^-]+$/, ''), // remove " - Source Name" suffix
-        summary: desc || title,
-        body:    desc || title,
-        url:     link,
-        image:   '',
-        source:  source,
-        date:    fmtDate(pubDate),
-        rawDate: pubDate,
-        cat:     guessCat(title + ' ' + label)
-      };
-    }).filter(Boolean);
-  } catch(e) { return []; }
+        // Build a meaningful 2-3 sentence summary from description
+        const sentences = desc.match(/[^.!?]+[.!?]+/g) || [];
+        const summary2 = sentences.slice(0, 3).join(' ').trim() || desc.slice(0, 200) || cleanTitle;
+
+        return {
+          title:   cleanTitle,
+          summary: summary2 || desc || cleanTitle,
+          body:    desc || cleanTitle,
+          url:     link,
+          image:   '',
+          source:  source,
+          date:    fmtDate(pubDate),
+          rawDate: pubDate,
+          cat:     guessCat(cleanTitle + ' ' + label)
+        };
+      }).filter(Boolean);
+
+      if (results.length > 0) return results; // success — stop trying proxies
+    } catch(e) { continue; }
+  }
+  return []; // all proxies failed
 }
 
 // Fallback: NewsAPI if Google News fails
@@ -825,18 +846,52 @@ function esc(s){ if(!s)return''; const d=document.createElement('div'); d.textCo
 function loadFallback(){
   const h = (n) => new Date(Date.now() - n*3600000).toISOString();
   allArticles=[
-    {cat:'Models',   title:'Gemini 3.1 Pro dominates 13 of 16 AI benchmarks',        summary:'Scores 77.1% on ARC-AGI-2, more than double its predecessor.', body:'Google Gemini 3.1 Pro leads 13 of 16 benchmarks.',           url:'https://blog.google',   image:'',source:'Google Blog', date:'1h ago', rawDate:h(1)},
-    {cat:'Policy',   title:'Anthropic sues Pentagon over supply chain risk label',    summary:'Legal clash escalates as 30+ employees sign amicus brief.',     body:'Anthropic filed suit after being classified as supply risk.',  url:'https://axios.com',     image:'',source:'Axios',       date:'2h ago', rawDate:h(2)},
-    {cat:'Business', title:'OpenAI to introduce Sponsored ads in ChatGPT',            summary:'Ads influenced by conversations, driven by data center costs.',  body:'OpenAI announced advertising will come to ChatGPT.',          url:'https://axios.com',     image:'',source:'Axios',       date:'3h ago', rawDate:h(3)},
-    {cat:'Research', title:'Claude Opus 4.6 introduces adaptive thinking mode',       summary:'Model automatically decides when deeper reasoning is needed.',   body:'Anthropic Claude Opus 4.6 introduces adaptive thinking.',     url:'https://anthropic.com', image:'',source:'Anthropic',   date:'4h ago', rawDate:h(4)},
-    {cat:'Industry', title:'US cloud AI infrastructure spend to hit 600B in 2026',    summary:'Investment doubles from 2024 as AI enters deployment phase.',    body:'US cloud providers projected to spend 600B on AI in 2026.',   url:'https://cfr.org',       image:'',source:'CFR',         date:'5h ago', rawDate:h(5)},
-    {cat:'Products', title:'Samsung Galaxy S26 bets on agentic AI as infrastructure', summary:'Galaxy Unpacked 2026 focused on background AI automation.',      body:'Samsung unveiled Galaxy S26 series with agentic AI theme.',   url:'https://samsung.com',   image:'',source:'Samsung',     date:'6h ago', rawDate:h(6)},
-    {cat:'Policy',   title:'Italy and Denmark ban government use of DeepSeek',        summary:'Data security concerns prompt bans across EU nations.',          body:'Multiple European countries banned government use of DeepSeek.',url:'https://llm-stats.com', image:'',source:'LLM Stats',  date:'7h ago', rawDate:h(7)},
+    {
+      cat:'Models', url:'https://blog.google', image:'', source:'Google Blog', date:'1h ago', rawDate:h(1),
+      title:'Gemini 3.1 Pro dominates 13 of 16 major AI benchmarks',
+      summary:'Google released Gemini 3.1 Pro scoring 77.1% on the ARC-AGI-2 pure-logic test, more than double its predecessor. The model achieves 94.3% on GPQA Diamond, surpassing human expert-level scientific knowledge. Pricing starts at $2 per million input tokens, a 60% drop year-over-year.',
+      body:'Google released Gemini 3.1 Pro scoring 77.1% on the ARC-AGI-2 pure-logic test, more than double its predecessor. The model achieves 94.3% on GPQA Diamond, surpassing human expert-level scientific knowledge. Pricing starts at $2 per million input tokens, a 60% drop year-over-year.'
+    },
+    {
+      cat:'Policy', url:'https://axios.com', image:'', source:'Axios', date:'2h ago', rawDate:h(2),
+      title:'Anthropic sues Pentagon over supply chain risk classification',
+      summary:'Anthropic filed suit against the US Department of Defense after being blocked from government contracts. Over 30 employees from OpenAI and Google signed an amicus brief in support of Anthropic. The case has become a landmark AI policy dispute, highlighting tensions between national security and AI procurement.',
+      body:'Anthropic filed suit against the US Department of Defense after being blocked from government contracts. Over 30 employees from OpenAI and Google signed an amicus brief in support of Anthropic. The case has become a landmark AI policy dispute, highlighting tensions between national security and AI procurement.'
+    },
+    {
+      cat:'Business', url:'https://axios.com', image:'', source:'Axios', date:'3h ago', rawDate:h(3),
+      title:'OpenAI to introduce Sponsored ads inside ChatGPT conversations',
+      summary:'OpenAI confirmed advertising is coming to ChatGPT, with ads labelled Sponsored and targeted based on conversation context. The move is driven by the need to fund massive data center expansion. Paid subscribers will get an option to opt out of ads entirely.',
+      body:'OpenAI confirmed advertising is coming to ChatGPT, with ads labelled Sponsored and targeted based on conversation context. The move is driven by the need to fund massive data center expansion. Paid subscribers will get an option to opt out of ads entirely.'
+    },
+    {
+      cat:'Research', url:'https://anthropic.com', image:'', source:'Anthropic', date:'4h ago', rawDate:h(4),
+      title:'Claude Opus 4.6 introduces adaptive thinking for complex reasoning tasks',
+      summary:'Anthropic Claude Opus 4.6 automatically decides when a problem needs deep multi-step reasoning, without users manually switching modes. The model now writes the majority of its own code updates, a milestone in AI self-improvement. Claude Sonnet 4.6 followed two weeks later as a faster model for everyday use.',
+      body:'Anthropic Claude Opus 4.6 automatically decides when a problem needs deep multi-step reasoning, without users manually switching modes. The model now writes the majority of its own code updates, a milestone in AI self-improvement. Claude Sonnet 4.6 followed two weeks later as a faster model for everyday use.'
+    },
+    {
+      cat:'Industry', url:'https://cfr.org', image:'', source:'CFR', date:'5h ago', rawDate:h(5),
+      title:'US cloud providers set to spend $600 billion on AI infrastructure in 2026',
+      summary:'Microsoft, Google, and Amazon are collectively on track to spend $600 billion on AI infrastructure this year, doubling 2024 spending levels. Analysts describe this as a phase transition from experimentation to mass AI deployment. MIT estimates 12% of US jobs could now be cost-effectively automated.',
+      body:'Microsoft, Google, and Amazon are collectively on track to spend $600 billion on AI infrastructure this year, doubling 2024 spending levels. Analysts describe this as a phase transition from experimentation to mass AI deployment. MIT estimates 12% of US jobs could now be cost-effectively automated.'
+    },
+    {
+      cat:'Products', url:'https://news.samsung.com', image:'', source:'Samsung', date:'6h ago', rawDate:h(6),
+      title:'Samsung Galaxy S26 positions agentic AI as invisible everyday infrastructure',
+      summary:'At Galaxy Unpacked 2026 in San Francisco, Samsung described AI as moving from a feature to invisible infrastructure that quietly handles tasks in the background. The Galaxy S26 ships with Bixby, Gemini, and Perplexity running simultaneously for the first time. Samsung plans to double its AI smartphone lineup by end of 2026.',
+      body:'At Galaxy Unpacked 2026 in San Francisco, Samsung described AI as moving from a feature to invisible infrastructure that quietly handles tasks in the background. The Galaxy S26 ships with Bixby, Gemini, and Perplexity running simultaneously for the first time. Samsung plans to double its AI smartphone lineup by end of 2026.'
+    },
+    {
+      cat:'Policy', url:'https://llm-stats.com', image:'', source:'LLM Stats', date:'7h ago', rawDate:h(7),
+      title:'Italy, Denmark and Czech Republic ban DeepSeek from all government systems',
+      summary:'Three European nations have blocked government agencies from using DeepSeek AI models due to data sovereignty and cybersecurity concerns. The UK ICO and Ireland DPC have also opened formal investigations into xAI Grok over data protection violations. DeepSeek V4 with 1 trillion parameters is still expected in March 2026.',
+      body:'Three European nations have blocked government agencies from using DeepSeek AI models due to data sovereignty and cybersecurity concerns. The UK ICO and Ireland DPC have also opened formal investigations into xAI Grok over data protection violations. DeepSeek V4 with 1 trillion parameters is still expected in March 2026.'
+    },
   ];
   render();
-  setStatus('','Could not load live news · Showing recent stories · Get a free GNews key at gnews.io for real-time news');
+  setStatus('warn','Live news unavailable right now · Showing cached stories');
 }
-
 loadNews();
 setInterval(loadNews, 10 * 60 * 1000); // Refresh every 10 minutes
 </script>
