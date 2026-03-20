@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIWorld — Your Daily Pulse on Artificial Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<!-- ═══════════════════════════════════════════════════════
+  GOOGLE ADSENSE SETUP
+  1. Go to https://adsense.google.com → sign up free
+  2. Add your site URL and verify ownership
+  3. Publisher ID: ca-pub-8959445646382683 ✓ Already set!
+  4. Replace each "XXXXXXXXXX" ad slot ID with your real slot IDs
+  5. Approval takes 1–3 days, then ads appear automatically
+════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════
+  SEO META TAGS
+  Replace "https://yoursite.pages.dev" with your real URL
+════════════════════════════════════════════════════════ -->
+<meta name="description" content="AIWorld — Your daily pulse on artificial intelligence. Latest AI news, research, products, policy and more from OpenAI, Anthropic, Google and beyond.">
+<meta name="keywords" content="AI news, artificial intelligence, OpenAI, Anthropic, Google Gemini, ChatGPT, Claude, machine learning, deep learning, LLM">
+<meta name="author" content="AIWorld News">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://yoursite.pages.dev/">
+
+<!-- Open Graph (for WhatsApp, Facebook, LinkedIn previews) -->
+<meta property="og:title" content="AIWorld — Your Daily Pulse on Artificial Intelligence">
+<meta property="og:description" content="Latest AI news, research, products and policy from the world's leading AI labs.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://yoursite.pages.dev/">
+<meta property="og:image" content="https://yoursite.pages.dev/og-image.png">
+
+<!-- Twitter Card (for Twitter/X previews) -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AIWorld — Your Daily Pulse on Artificial Intelligence">
+<meta name="twitter:description" content="Latest AI news, research, products and policy. Updated daily.">
+<meta name="twitter:image" content="https://yoursite.pages.dev/og-image.png">
+
+<!-- Sitemap auto-discovery -->
+<link rel="sitemap" type="application/xml" href="/sitemap.xml">
+
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8959445646382683" crossorigin="anonymous"></script>
+
+<!-- ═══════════════════════════════════════════════════════
+  RAZORPAY SETUP
+  1. Go to https://razorpay.com → create free account
+  2. Settings → API Keys → Generate Key
+  3. Replace "rzp_test_XXXXXXXXXXXXXXXXX" below with your Key ID
+  4. Test key = rzp_test_... | Live key = rzp_live_...
+════════════════════════════════════════════════════════ -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --accent:#E8593C;--gold:#C9A84C;
+  --bg:#ffffff;--bg2:#f7f6f3;
+  --text:#1a1a1a;--text2:#5a5a5a;--text3:#9a9a9a;
+  --border:#e0ddd8;--border2:#c8c5c0;
+  --info:#185FA5;--info-bg:#E6F1FB;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#1a1a1a;--bg2:#242424;--text:#f0efe9;--text2:#a0a09a;--text3:#606060;--border:#333330;--border2:#444440;--info:#85B7EB;--info-bg:#042C53;}
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;}
+a{color:inherit;text-decoration:none;}
+
+.topbar{background:var(--text);color:var(--bg);font-size:11px;padding:5px 24px;display:flex;justify-content:space-between;align-items:center;}
+.topbar-right{display:flex;gap:16px;opacity:0.7;}
+
+header{border-bottom:2px solid var(--text);padding:14px 24px 12px;}
+.header-inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.logo{font-family:'Playfair Display',serif;font-size:34px;font-weight:900;letter-spacing:-1.5px;color:var(--text);line-height:1;}
+.logo span{color:var(--accent);}
+.logo-sub{font-size:11px;color:var(--text2);letter-spacing:0.6px;text-transform:uppercase;margin-top:2px;}
+.header-actions{display:flex;gap:10px;align-items:center;}
+.btn-signin{background:var(--text);color:var(--bg);padding:6px 14px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;}
+.btn-icon{font-size:13px;cursor:pointer;color:var(--text2);background:none;border:none;padding:4px 8px;}
+.btn-premium-nav{background:var(--gold);color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;}
+
+nav{border-bottom:0.5px solid var(--border);padding:0 24px;display:flex;overflow-x:auto;background:var(--bg);}
+.nav-item{font-size:12px;font-weight:500;padding:10px 14px;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;color:var(--text2);transition:color 0.15s,border-color 0.15s;}
+.nav-item:hover{color:var(--text);}
+.nav-item.active{color:var(--text);border-bottom-color:var(--accent);}
+
+.ticker-wrap{background:var(--accent);color:#fff;display:flex;align-items:center;overflow:hidden;height:32px;}
+.ticker-label{background:rgba(0,0,0,0.22);padding:0 14px;height:100%;display:flex;align-items:center;font-size:10px;font-weight:500;letter-spacing:1.2px;white-space:nowrap;flex-shrink:0;}
+.ticker-track{display:flex;gap:48px;animation:ticker 45s linear infinite;white-space:nowrap;font-size:11px;padding:0 24px;align-items:center;height:100%;}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ticker-dot{display:inline-block;width:4px;height:4px;background:rgba(255,255,255,0.5);border-radius:50%;margin:0 10px;vertical-align:middle;}
+
+.api-banner{background:var(--info-bg);border-bottom:0.5px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.api-banner input{flex:1;min-width:200px;padding:6px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);outline:none;font-family:'DM Sans',sans-serif;}
+.api-banner input:focus{border-color:var(--accent);}
+.api-banner-text{font-size:12px;color:var(--info);}
+.api-banner-text a{color:var(--accent);text-decoration:underline;}
+.btn-connect{padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;}
+.btn-rss{padding:6px 12px;background:none;border:0.5px solid var(--border2);color:var(--text2);border-radius:6px;font-size:12px;cursor:pointer;}
+
+.status-bar{padding:6px 24px;font-size:11px;color:var(--text3);background:var(--bg2);border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:6px;}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);flex-shrink:0;}
+.status-dot.live{background:#2ecc71;animation:blink 1.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* AD SLOTS */
+.ad-wrap{max-width:1200px;margin:0 auto;padding:10px 24px 0;}
+.ad-slot{background:var(--bg2);border:0.5px dashed var(--border2);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--text3);font-size:9px;letter-spacing:0.5px;text-transform:uppercase;padding:8px;overflow:hidden;}
+.ad-banner-slot{width:100%;min-height:90px;margin-bottom:4px;}
+.ad-inline-slot{width:100%;min-height:100px;margin:16px 0;}
+.ad-sidebar-slot{width:100%;min-height:250px;margin-bottom:16px;}
+
+/* PREMIUM BANNER */
+.premium-banner{background:linear-gradient(135deg,#1a1a2e 0%,#2d1b69 50%,#0f3460 100%);border-radius:12px;padding:24px;margin:20px 0;position:relative;overflow:hidden;}
+.premium-banner::before{content:'★';position:absolute;font-size:120px;right:-10px;top:-20px;opacity:0.05;color:#fff;}
+.premium-tag{display:inline-block;background:var(--gold);color:#fff;font-size:9px;font-weight:500;letter-spacing:1.2px;text-transform:uppercase;padding:3px 9px;border-radius:3px;margin-bottom:10px;}
+.premium-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.3;}
+.premium-desc{font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:14px;line-height:1.6;}
+.premium-features{display:flex;flex-direction:column;gap:6px;margin-bottom:18px;}
+.premium-feature{display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,0.85);}
+.premium-feature::before{content:'✓';background:var(--gold);color:#fff;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;}
+.premium-cta-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.btn-pay-monthly{background:var(--gold);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;transition:opacity 0.15s;}
+.btn-pay-monthly:hover{opacity:0.88;}
+.btn-pay-yearly{background:rgba(255,255,255,0.12);color:#fff;border:0.5px solid rgba(255,255,255,0.3);border-radius:8px;padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;transition:background 0.15s;}
+.btn-pay-yearly:hover{background:rgba(255,255,255,0.2);}
+.premium-note{font-size:10px;color:rgba(255,255,255,0.4);margin-top:10px;}
+
+/* SIDEBAR PREMIUM */
+.sidebar-premium{background:linear-gradient(135deg,#1a1a2e,#2d1b69);border-radius:12px;padding:16px;margin-bottom:16px;}
+.sidebar-premium h3{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#fff;margin-bottom:5px;margin-top:6px;}
+.sidebar-premium p{font-size:11px;color:rgba(255,255,255,0.65);margin-bottom:12px;line-height:1.5;}
+.sidebar-premium .btn-pay-monthly{width:100%;text-align:center;font-size:12px;padding:8px 16px;display:block;}
+
+.main{padding:20px 24px;display:grid;grid-template-columns:1fr 340px;gap:24px;max-width:1200px;margin:0 auto;}
+@media(max-width:768px){.main{grid-template-columns:1fr;padding:14px;}}
+
+.section-label{font-size:10px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:12px;padding-bottom:8px;border-bottom:0.5px solid var(--border);}
+.skeleton{background:linear-gradient(90deg,var(--bg2) 25%,var(--border) 50%,var(--bg2) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:8px;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+.hero{border:0.5px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:border-color 0.15s;margin-bottom:20px;}
+.hero:hover{border-color:var(--border2);}
+.hero-img{height:200px;display:flex;align-items:flex-end;padding:20px;position:relative;overflow:hidden;}
+.hero-img-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(0.4);}
+.hero-img-fallback{position:absolute;inset:0;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);}
+.hero-img-content{position:relative;z-index:1;}
+.hero-cat{display:inline-block;background:var(--accent);color:#fff;font-size:9px;font-weight:500;letter-spacing:1.2px;text-transform:uppercase;padding:3px 9px;border-radius:3px;margin-bottom:8px;}
+.hero-title{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;color:#fff;line-height:1.3;}
+.hero-body{padding:14px 16px;}
+.hero-meta{font-size:11px;color:var(--text2);margin-bottom:6px;}
+.hero-summary{font-size:13px;color:var(--text2);line-height:1.6;}
+
+.story-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+@media(max-width:500px){.story-grid{grid-template-columns:1fr;}}
+.story-card{border:0.5px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;transition:border-color 0.15s,background 0.15s;}
+.story-card:hover{border-color:var(--border2);background:var(--bg2);}
+.story-cat{display:inline-block;font-size:9px;font-weight:500;letter-spacing:0.8px;text-transform:uppercase;color:var(--info);margin-bottom:6px;}
+.story-title{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;line-height:1.35;margin-bottom:6px;color:var(--text);}
+.story-summary{font-size:12px;color:var(--text2);line-height:1.55;margin-bottom:6px;}
+.story-meta{font-size:10px;color:var(--text3);}
+
+.more-item{display:flex;gap:12px;padding:12px 0;border-bottom:0.5px solid var(--border);cursor:pointer;}
+.more-item:last-child{border-bottom:none;}
+.more-item:hover .more-title{color:var(--accent);}
+.more-num{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--border2);line-height:1;min-width:24px;flex-shrink:0;padding-top:2px;}
+.more-cat{font-size:9px;text-transform:uppercase;letter-spacing:0.7px;color:var(--info);margin-bottom:3px;}
+.more-title{font-size:13px;font-weight:500;line-height:1.4;color:var(--text);transition:color 0.12s;}
+.more-meta{font-size:10px;color:var(--text3);margin-top:3px;}
+
+.sidebar-section{border:0.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;}
+.sidebar-header{background:var(--text);color:var(--bg);padding:9px 16px;font-size:11px;font-weight:500;letter-spacing:0.9px;text-transform:uppercase;display:flex;align-items:center;gap:7px;}
+.trend-item{padding:11px 14px;border-bottom:0.5px solid var(--border);cursor:pointer;transition:background 0.12s;display:flex;gap:11px;align-items:flex-start;}
+.trend-item:last-child{border-bottom:none;}
+.trend-item:hover{background:var(--bg2);}
+.trend-num{font-size:20px;font-weight:700;font-family:'Playfair Display',serif;color:var(--border2);line-height:1;min-width:22px;flex-shrink:0;}
+.trend-item:first-child .trend-num{color:var(--accent);}
+.trend-item:nth-child(2) .trend-num{color:var(--text2);}
+.trend-cat{font-size:9px;text-transform:uppercase;letter-spacing:0.7px;color:var(--info);margin-bottom:2px;}
+.trend-title{font-size:12px;font-weight:500;line-height:1.38;color:var(--text);}
+.trend-meta{font-size:10px;color:var(--text3);margin-top:2px;}
+
+.tag-wrap{padding:12px 14px;display:flex;flex-wrap:wrap;gap:7px;}
+.tag{font-size:11px;padding:4px 10px;border-radius:99px;border:0.5px solid var(--border2);cursor:pointer;color:var(--text2);transition:border-color 0.12s,color 0.12s;background:none;}
+.tag:hover{border-color:var(--accent);color:var(--accent);}
+
+.newsletter-box{padding:16px;background:var(--bg2);}
+.newsletter-box h3{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;margin-bottom:5px;}
+.newsletter-box p{font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5;}
+.nl-form{display:flex;gap:6px;flex-wrap:wrap;}
+.nl-input{flex:1;min-width:120px;padding:7px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);outline:none;}
+.nl-input:focus{border-color:var(--accent);}
+.nl-btn{padding:7px 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;}
+
+footer{margin-top:32px;border-top:0.5px solid var(--border);padding:20px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+.footer-logo{font-family:'Playfair Display',serif;font-size:18px;font-weight:900;letter-spacing:-0.5px;}
+.footer-logo span{color:var(--accent);}
+.footer-links{display:flex;gap:16px;font-size:11px;color:var(--text2);}
+.footer-links a:hover{color:var(--text);}
+
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;padding:20px;}
+#overlay.open{display:flex;}
+.article-modal{background:var(--bg);border-radius:14px;max-width:600px;width:100%;max-height:85vh;overflow-y:auto;padding:28px;position:relative;border:0.5px solid var(--border);}
+.modal-close{position:absolute;top:16px;right:16px;cursor:pointer;color:var(--text3);background:var(--bg2);border:0.5px solid var(--border);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.modal-close:hover{color:var(--text);}
+.modal-cat{display:inline-block;background:var(--accent);color:#fff;font-size:9px;font-weight:500;letter-spacing:1.2px;text-transform:uppercase;padding:3px 9px;border-radius:3px;margin-bottom:12px;}
+.modal-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;line-height:1.3;margin-bottom:10px;color:var(--text);}
+.modal-meta{font-size:11px;color:var(--text2);margin-bottom:16px;padding-bottom:14px;border-bottom:0.5px solid var(--border);}
+.modal-img{width:100%;height:200px;object-fit:cover;border-radius:8px;margin-bottom:16px;}
+.modal-body p{font-size:13px;color:var(--text2);line-height:1.78;margin-bottom:14px;}
+.modal-source{margin-top:18px;padding-top:14px;border-top:0.5px solid var(--border);font-size:11px;color:var(--text3);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.read-more{display:inline-block;font-size:12px;font-weight:500;color:var(--accent);border:0.5px solid var(--accent);padding:6px 14px;border-radius:6px;cursor:pointer;transition:background 0.12s,color 0.12s;}
+.read-more:hover{background:var(--accent);color:#fff;}
+
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;z-index:9999;transition:transform 0.3s;pointer-events:none;white-space:nowrap;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+
+#search-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;align-items:flex-start;justify-content:center;padding-top:80px;}
+#search-overlay.open{display:flex;}
+.search-box{background:var(--bg);border-radius:12px;width:100%;max-width:560px;padding:20px;border:0.5px solid var(--border);}
+.search-input{width:100%;padding:10px 14px;border:0.5px solid var(--border2);border-radius:8px;font-size:15px;background:var(--bg2);color:var(--text);outline:none;font-family:'DM Sans',sans-serif;}
+.search-input:focus{border-color:var(--accent);}
+.search-result-item{padding:10px 0;border-bottom:0.5px solid var(--border);cursor:pointer;}
+.search-result-item:last-child{border-bottom:none;}
+.search-result-item:hover .sr-title{color:var(--accent);}
+.sr-cat{font-size:9px;text-transform:uppercase;letter-spacing:0.7px;color:var(--info);margin-bottom:3px;}
+.sr-title{font-size:13px;font-weight:500;color:var(--text);transition:color 0.12px;}
+.sr-meta{font-size:10px;color:var(--text3);margin-top:2px;}
+
+.pulse{display:inline-block;width:6px;height:6px;background:var(--accent);border-radius:50%;animation:blink 1.4s ease-in-out infinite;flex-shrink:0;}
+</style>
+
+<!-- ═══════════════════════════════════════════════════════
+  GOOGLE ANALYTICS SETUP
+  1. Go to https://analytics.google.com → sign in
+  2. Admin → Create Property → add your website URL
+  3. Get your Measurement ID (looks like G-XXXXXXXXXX)
+  4. Replace BOTH "G-XXXXXXXXXX" below with your real ID
+  5. Done! Data starts flowing within 24 hours
+════════════════════════════════════════════════════════ -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX');
+</script>
+</head>
+<body>
+
+<div class="topbar">
+  <span id="live-date">Loading...</span>
+  <div class="topbar-right"><span>Research</span><span>Policy</span><span>Products</span><span>Newsletter</span></div>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div>
+      <div class="logo">AI<span>World</span></div>
+      <div class="logo-sub">Your daily pulse on artificial intelligence</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-icon" onclick="openSearch()">🔍 Search</button>
+      <button class="btn-premium-nav" onclick="scrollToPremium()">★ Go Premium</button>
+      <button class="btn-signin">Sign in</button>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <div class="nav-item active" onclick="setNav(this,'all')">Home</div>
+  <div class="nav-item" onclick="setNav(this,'research')">Research</div>
+  <div class="nav-item" onclick="setNav(this,'product')">Products</div>
+  <div class="nav-item" onclick="setNav(this,'policy')">Policy</div>
+  <div class="nav-item" onclick="setNav(this,'business')">Business</div>
+  <div class="nav-item" onclick="setNav(this,'safety')">AI Safety</div>
+</nav>
+
+<!-- API Key Banner -->
+<div class="api-banner" id="api-banner">
+  <span class="api-banner-text">🔑 For live daily news, get a free key at <a href="https://newsapi.org/register" target="_blank">NewsAPI.org</a>:</span>
+  <input type="text" id="api-key-input" placeholder="Paste your API key here...">
+  <button class="btn-connect" onclick="saveApiKey()">Connect Live News</button>
+  <button class="btn-rss" onclick="dismissBanner()">Use RSS (no key needed)</button>
+</div>
+
+<div class="status-bar">
+  <span class="status-dot" id="status-dot"></span>
+  <span id="status-text">Fetching latest AI news...</span>
+</div>
+
+<div class="ticker-wrap">
+  <div class="ticker-label">⚡ LIVE</div>
+  <div class="ticker-track" id="ticker-track"><span>Loading headlines...</span></div>
+</div>
+
+<!-- ADSENSE: Leaderboard banner (below ticker) -->
+<div class="ad-wrap">
+  <div class="ad-slot ad-banner-slot">
+    <div style="margin-bottom:4px;">Advertisement</div>
+    <ins class="adsbygoogle"
+         style="display:block;width:100%;min-height:70px;"
+         data-ad-client="ca-pub-8959445646382683"
+         data-ad-slot="1111111111"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- LEFT -->
+  <div>
+    <div class="section-label">Top Stories</div>
+    <div id="hero-area"><div class="skeleton" style="height:200px;border-radius:12px;margin-bottom:20px;"></div></div>
+    <div class="story-grid" id="story-grid">
+      <div class="skeleton" style="height:150px;"></div>
+      <div class="skeleton" style="height:150px;"></div>
+      <div class="skeleton" style="height:150px;"></div>
+      <div class="skeleton" style="height:150px;"></div>
+    </div>
+
+    <!-- ADSENSE: In-feed ad (between story sections) -->
+    <div class="ad-slot ad-inline-slot">
+      <div style="margin-bottom:4px;">Advertisement</div>
+      <ins class="adsbygoogle"
+           style="display:block;width:100%;min-height:80px;"
+           data-ad-client="ca-pub-8959445646382683"
+           data-ad-slot="2222222222"
+           data-ad-format="fluid"
+           data-ad-layout="in-article"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <!-- PREMIUM MEMBERSHIP BANNER -->
+    <div class="premium-banner" id="premium-section">
+      <div class="premium-tag">★ Premium Membership</div>
+      <div class="premium-title">Read AI World without limits</div>
+      <div class="premium-desc">Join thousands of researchers, founders, and engineers who get the full picture — no ads, no paywalls, no noise.</div>
+      <div class="premium-features">
+        <div class="premium-feature">Unlimited articles — no daily cap</div>
+        <div class="premium-feature">Zero ads — completely ad-free reading</div>
+        <div class="premium-feature">Weekly deep-dive analysis reports</div>
+        <div class="premium-feature">Early access to breaking AI stories</div>
+        <div class="premium-feature">Priority newsletter with executive insights</div>
+      </div>
+      <div class="premium-cta-row">
+        <button class="btn-pay-monthly" onclick="payRazorpay('monthly')">₹199 / month — Start now</button>
+        <button class="btn-pay-yearly" onclick="payRazorpay('yearly')">₹999 / year — Save 58%</button>
+      </div>
+      <div class="premium-note">Secured by Razorpay · UPI, Cards, Net Banking · Cancel anytime</div>
+    </div>
+
+    <div class="section-label" style="margin-top:20px;">More Stories</div>
+    <div id="more-stories"></div>
+
+    <!-- ADSENSE: Bottom rectangle -->
+    <div class="ad-slot ad-inline-slot" style="margin-top:20px;">
+      <div style="margin-bottom:4px;">Advertisement</div>
+      <ins class="adsbygoogle"
+           style="display:block;width:100%;min-height:80px;"
+           data-ad-client="ca-pub-8959445646382683"
+           data-ad-slot="3333333333"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div>
+
+    <!-- Sidebar premium card -->
+    <div class="sidebar-premium">
+      <div class="premium-tag">★ Premium</div>
+      <h3>Go ad-free today</h3>
+      <p>Unlimited stories, no ads, weekly deep-dives. From ₹199/month.</p>
+      <button class="btn-pay-monthly" onclick="payRazorpay('monthly')">Upgrade — ₹199/month</button>
+    </div>
+
+    <!-- Trending -->
+    <div class="sidebar-section">
+      <div class="sidebar-header"><span class="pulse"></span> Trending Now</div>
+      <div id="trend-list"><div style="padding:14px;font-size:12px;color:var(--text3)">Loading...</div></div>
+    </div>
+
+    <!-- ADSENSE: Sidebar square (300x250) -->
+    <div class="ad-slot ad-sidebar-slot">
+      <div style="margin-bottom:4px;">Advertisement</div>
+      <ins class="adsbygoogle"
+           style="display:block;min-height:250px;width:100%;"
+           data-ad-client="ca-pub-8959445646382683"
+           data-ad-slot="4444444444"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <!-- Tags -->
+    <div class="sidebar-section">
+      <div class="sidebar-header">🏷 Hot Topics</div>
+      <div class="tag-wrap">
+        <span class="tag" onclick="searchTag('GPT-5')">#GPT-5</span>
+        <span class="tag" onclick="searchTag('Claude')">#Claude</span>
+        <span class="tag" onclick="searchTag('Gemini')">#Gemini</span>
+        <span class="tag" onclick="searchTag('DeepSeek')">#DeepSeek</span>
+        <span class="tag" onclick="searchTag('AI Policy')">#AIPolicy</span>
+        <span class="tag" onclick="searchTag('Agentic AI')">#AgenticAI</span>
+        <span class="tag" onclick="searchTag('OpenAI')">#OpenAI</span>
+        <span class="tag" onclick="searchTag('Anthropic')">#Anthropic</span>
+        <span class="tag" onclick="searchTag('AI Safety')">#AISafety</span>
+        <span class="tag" onclick="searchTag('LLM')">#LLMs</span>
+        <span class="tag" onclick="searchTag('Robotics')">#Robotics</span>
+        <span class="tag" onclick="searchTag('Machine Learning')">#MachineLearning</span>
+      </div>
+    </div>
+
+    <!-- Newsletter -->
+    <div class="sidebar-section">
+      <div class="sidebar-header">📧 Daily Digest</div>
+      <div class="newsletter-box">
+        <h3>Stay ahead of AI</h3>
+        <p>Top 5 AI stories every morning, free.</p>
+        <div class="nl-form">
+          <input class="nl-input" type="email" placeholder="your@email.com">
+          <button class="nl-btn">Subscribe</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── HIT COUNTER STRIP ── -->
+<div id="stats-strip" style="background:var(--bg2);border-top:0.5px solid var(--border);padding:10px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;max-width:100%;">
+  <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:7px;">
+      <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;">👁 Total visits</span>
+      <!-- ═══════════════════════════════════════════════
+        HITS COUNTER SETUP
+        Replace "shireeshbangar.github.io/aiworld-news" below with your
+        actual website URL after you host it on Netlify
+        or GitHub Pages. The counter auto-increments
+        on every visit. No signup needed!
+      ════════════════════════════════════════════════ -->
+      <img src="https://hits.sh/shireeshbangar.github.io/aiworld-news.svg?style=flat&color=E8593C&labelColor=1a1a1a" alt="Hit Counter" style="height:18px;border-radius:3px;" onerror="this.replaceWith(document.createTextNode('— add your URL'))">
+    </div>
+    <div id="realtime-dot" style="display:flex;align-items:center;gap:5px;">
+      <span style="width:6px;height:6px;background:#2ecc71;border-radius:50%;display:inline-block;animation:blink 1.4s ease-in-out infinite;"></span>
+      <span style="font-size:11px;color:var(--text3);" id="rt-text">Google Analytics active</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:16px;font-size:11px;color:var(--text3);align-items:center;">
+    <a href="https://analytics.google.com" target="_blank" style="color:var(--text3);text-decoration:none;display:flex;align-items:center;gap:4px;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'">
+      📊 View Analytics Dashboard ↗
+    </a>
+    <span>|</span>
+    <span id="page-load-time" style="font-size:11px;color:var(--text3);">Page load: —</span>
+  </div>
+</div>
+
+<footer>
+  <div>
+    <div class="footer-logo">AI<span>World</span></div>
+    <div style="font-size:10px;color:var(--text3);margin-top:3px;">© 2026 AIWorld News</div>
+  </div>
+  <div class="footer-links">
+    <a href="#">About</a>
+    <a href="#" onclick="scrollToPremium();return false;">Premium</a>
+    <a href="#">Advertise</a>
+    <a href="#">Privacy</a>
+    <a href="#">RSS</a>
+  </div>
+</footer>
+
+<!-- Article Modal -->
+<div id="overlay" onclick="closeOverlay(event)">
+  <div class="article-modal">
+    <div class="modal-close" onclick="closeModal()">✕</div>
+    <div class="modal-cat" id="m-cat"></div>
+    <div class="modal-title" id="m-title"></div>
+    <div class="modal-meta" id="m-meta"></div>
+    <div class="modal-body" id="m-body"></div>
+    <div class="modal-source" id="m-source"></div>
+  </div>
+</div>
+
+<!-- Search Overlay -->
+<div id="search-overlay" onclick="closeSearchOverlay(event)">
+  <div class="search-box">
+    <input class="search-input" id="search-input" type="text" placeholder="Search AI news…"
+      oninput="runSearch(this.value)" onkeydown="if(event.key==='Escape')closeSearch()">
+    <div id="search-results" style="margin-top:12px;"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── RAZORPAY CONFIG ──────────────────────────────────────────
+// Replace with your Razorpay Key ID from dashboard.razorpay.com
+const RAZORPAY_KEY = 'rzp_test_XXXXXXXXXXXXXXXXX';
+
+const PLANS = {
+  monthly: { amount: 19900, desc: 'AIWorld Premium · ₹199/month · Ad-free + Unlimited' },
+  yearly:  { amount: 99900, desc: 'AIWorld Premium · ₹999/year · Save 58%' }
+};
+
+function payRazorpay(plan) {
+  const p = PLANS[plan];
+  const rzp = new Razorpay({
+    key: RAZORPAY_KEY,
+    amount: p.amount,
+    currency: 'INR',
+    name: 'AIWorld News',
+    description: p.desc,
+    theme: { color: '#E8593C' },
+    handler: function(response) {
+      // Payment success!
+      // TODO: Send response.razorpay_payment_id to your backend to verify & activate membership
+      showToast('✓ Payment successful! Welcome to AIWorld Premium ★');
+    },
+    modal: {
+      ondismiss: function() { showToast('Payment cancelled.'); }
+    }
+  });
+  rzp.on('payment.failed', function() { showToast('✗ Payment failed. Please try again.'); });
+  rzp.open();
+}
+
+function scrollToPremium() {
+  document.getElementById('premium-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+// ── NEWS ─────────────────────────────────────────────────────
+let API_KEY = localStorage.getItem('aiworld_key') || '';
+let allArticles = [], currentFilter = 'all';
+
+document.getElementById('live-date').textContent =
+  new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ' · AI World News';
+
+if (API_KEY) document.getElementById('api-banner').style.display = 'none';
+
+function saveApiKey() {
+  const k = document.getElementById('api-key-input').value.trim();
+  if (!k) { alert('Please paste your API key.'); return; }
+  API_KEY = k; localStorage.setItem('aiworld_key', k);
+  document.getElementById('api-banner').style.display = 'none';
+  loadNews();
+}
+function dismissBanner() { document.getElementById('api-banner').style.display = 'none'; loadNews(); }
+function setStatus(type, msg) {
+  document.getElementById('status-dot').className = 'status-dot'+(type==='live'?' live':'');
+  document.getElementById('status-text').textContent = msg;
+}
+
+async function loadNews() {
+  setStatus('','Fetching latest AI news...');
+  if (API_KEY) { const ok = await tryNewsAPI(); if (ok) return; }
+  await tryRSS();
+}
+
+async function tryNewsAPI() {
+  try {
+    const r = await fetch(`https://newsapi.org/v2/everything?q=artificial+intelligence+OR+OpenAI+OR+Anthropic+OR+Gemini&sortBy=publishedAt&pageSize=24&language=en&apiKey=${API_KEY}`);
+    const d = await r.json();
+    if (d.status !== 'ok' || !d.articles?.length) return false;
+    allArticles = d.articles.filter(a=>a.title&&a.title!=='[Removed]'&&a.description).map(a=>({
+      title:a.title, summary:a.description||'',
+      body:(a.content||a.description||'').replace(/\[\+\d+ chars\]/,''),
+      url:a.url, image:a.urlToImage||'', source:a.source?.name||'',
+      date:fmtDate(a.publishedAt), cat:guessCat(a.title+' '+(a.description||''))
+    }));
+    if (!allArticles.length) return false;
+    render(); setStatus('live',`Live · ${new Date().toLocaleTimeString()} · NewsAPI`); return true;
+  } catch(e){ return false; }
+}
+
+const RSS_FEEDS = [
+  'https://rss2json.com/api.json?rss_url=https%3A%2F%2Ftechcrunch.com%2Fcategory%2Fartificial-intelligence%2Ffeed%2F',
+  'https://rss2json.com/api.json?rss_url=https%3A%2F%2Fventurebeat.com%2Fcategory%2Fai%2Ffeed%2F',
+  'https://rss2json.com/api.json?rss_url=https%3A%2F%2Fwww.theverge.com%2Frss%2Fai-artificial-intelligence%2Frss.xml',
+];
+
+async function tryRSS() {
+  setStatus('','Loading from RSS feeds...');
+  const items = [];
+  for (const feed of RSS_FEEDS) {
+    try {
+      const r = await fetch(feed); const d = await r.json();
+      if (d.status==='ok'&&d.items) d.items.slice(0,8).forEach(item=>items.push({
+        title:item.title, summary:strip(item.description||item.content||'').slice(0,200),
+        body:strip(item.content||item.description||'').slice(0,900),
+        url:item.link, image:item.thumbnail||item.enclosure?.link||'',
+        source:item.author||new URL(item.link).hostname.replace('www.',''),
+        date:fmtDate(item.pubDate), cat:guessCat(item.title+' '+(item.description||''))
+      }));
+    } catch(e){}
+  }
+  const seen=new Set();
+  allArticles=items.filter(a=>{if(seen.has(a.title))return false;seen.add(a.title);return true;});
+  if (allArticles.length) { render(); setStatus('live',`Live · ${new Date().toLocaleTimeString()} · RSS feeds`); }
+  else loadFallback();
+}
+
+function render() {
+  const list = getFiltered();
+  renderHero(list[0]);
+  renderGrid(list.slice(1,5));
+  renderMore(list.slice(5,13));
+  renderTrending(list.slice(0,7));
+  renderTicker(list.slice(0,10));
+}
+function getFiltered() {
+  if (currentFilter==='all') return allArticles;
+  const f=allArticles.filter(a=>a.cat.toLowerCase().includes(currentFilter));
+  return f.length?f:allArticles;
+}
+function renderHero(a) {
+  if (!a) return;
+  document.getElementById('hero-area').innerHTML=`
+    <div class="hero" onclick="openArticle(0)">
+      <div class="hero-img">
+        ${a.image?`<div class="hero-img-bg" style="background-image:url('${a.image}')"></div>`:'<div class="hero-img-fallback"></div>'}
+        <div class="hero-img-content">
+          <div class="hero-cat">🔥 ${esc(a.cat)}</div>
+          <div class="hero-title">${esc(a.title)}</div>
+        </div>
+      </div>
+      <div class="hero-body">
+        <div class="hero-meta">${esc(a.source)} · ${a.date}</div>
+        <div class="hero-summary">${esc(a.summary)}</div>
+      </div>
+    </div>`;
+}
+function renderGrid(items) {
+  document.getElementById('story-grid').innerHTML=items.map((a,i)=>`
+    <div class="story-card" onclick="openArticle(${i+1})">
+      <div class="story-cat">${esc(a.cat)}</div>
+      <div class="story-title">${esc(a.title)}</div>
+      <div class="story-summary">${esc(a.summary.slice(0,110))}...</div>
+      <div class="story-meta">${a.date} · ${esc(a.source)}</div>
+    </div>`).join('');
+}
+function renderMore(items) {
+  document.getElementById('more-stories').innerHTML=items.map((a,i)=>`
+    <div class="more-item" onclick="openArticle(${i+5})">
+      <div class="more-num">${i+1}</div>
+      <div><div class="more-cat">${esc(a.cat)}</div><div class="more-title">${esc(a.title)}</div><div class="more-meta">${a.date} · ${esc(a.source)}</div></div>
+    </div>`).join('');
+}
+function renderTrending(items) {
+  document.getElementById('trend-list').innerHTML=items.map((a,i)=>`
+    <div class="trend-item" onclick="openArticle(${i})">
+      <div class="trend-num">${i+1}</div>
+      <div><div class="trend-cat">${esc(a.cat)}</div><div class="trend-title">${esc(a.title)}</div><div class="trend-meta">${a.date} · ${esc(a.source)}</div></div>
+    </div>`).join('');
+}
+function renderTicker(items) {
+  const d=[...items,...items];
+  document.getElementById('ticker-track').innerHTML=d.map(a=>`<span>${esc(a.title)}</span><span class="ticker-dot"></span>`).join('');
+}
+function openArticle(i) {
+  const list=getFiltered(); const a=list[i]; if(!a)return;
+  document.getElementById('m-cat').textContent=a.cat;
+  document.getElementById('m-title').textContent=a.title;
+  document.getElementById('m-meta').textContent=`${a.source} · ${a.date}`;
+  document.getElementById('m-body').innerHTML=
+    (a.image?`<img class="modal-img" src="${a.image}" onerror="this.style.display='none'" alt="">`:'') +
+    a.body.split(/\n+/).filter(Boolean).map(p=>`<p>${p}</p>`).join('');
+  document.getElementById('m-source').innerHTML=
+    `<span>Source: ${esc(a.source)}</span><a class="read-more" href="${a.url}" target="_blank" rel="noopener">Read original ↗</a>`;
+  document.getElementById('overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('open'); document.body.style.overflow=''; }
+function closeOverlay(e){ if(e.target===document.getElementById('overlay'))closeModal(); }
+function openSearch(){ document.getElementById('search-overlay').classList.add('open'); setTimeout(()=>document.getElementById('search-input').focus(),80); document.body.style.overflow='hidden'; }
+function closeSearch(){ document.getElementById('search-overlay').classList.remove('open'); document.getElementById('search-input').value=''; document.getElementById('search-results').innerHTML=''; document.body.style.overflow=''; }
+function closeSearchOverlay(e){ if(e.target===document.getElementById('search-overlay'))closeSearch(); }
+function runSearch(q){
+  const r=document.getElementById('search-results');
+  if(!q.trim()){r.innerHTML='';return;}
+  const hits=allArticles.filter(a=>a.title.toLowerCase().includes(q.toLowerCase())||a.cat.toLowerCase().includes(q.toLowerCase())||a.summary.toLowerCase().includes(q.toLowerCase()));
+  if(!hits.length){r.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0">No results found.</div>';return;}
+  r.innerHTML=hits.slice(0,8).map(a=>`
+    <div class="search-result-item" onclick="openDirect(${allArticles.indexOf(a)});closeSearch()">
+      <div class="sr-cat">${esc(a.cat)}</div><div class="sr-title">${esc(a.title)}</div><div class="sr-meta">${a.date} · ${esc(a.source)}</div>
+    </div>`).join('');
+}
+function openDirect(i){
+  const a=allArticles[i]; if(!a)return;
+  document.getElementById('m-cat').textContent=a.cat;
+  document.getElementById('m-title').textContent=a.title;
+  document.getElementById('m-meta').textContent=`${a.source} · ${a.date}`;
+  document.getElementById('m-body').innerHTML=(a.image?`<img class="modal-img" src="${a.image}" onerror="this.style.display='none'" alt="">`:'') +a.body.split(/\n+/).filter(Boolean).map(p=>`<p>${p}</p>`).join('');
+  document.getElementById('m-source').innerHTML=`<span>Source: ${esc(a.source)}</span><a class="read-more" href="${a.url}" target="_blank">Read original ↗</a>`;
+  document.getElementById('overlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+function searchTag(t){ openSearch(); document.getElementById('search-input').value=t; runSearch(t); }
+function setNav(el,filter){ document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active')); el.classList.add('active'); currentFilter=filter; render(); }
+function guessCat(t){
+  t=t.toLowerCase();
+  if(t.includes('policy')||t.includes('regulation')||t.includes('ban')||t.includes('government'))return'Policy';
+  if(t.includes('research')||t.includes('paper')||t.includes('study')||t.includes('benchmark'))return'Research';
+  if(t.includes('product')||t.includes('launch')||t.includes('release')||t.includes('app'))return'Products';
+  if(t.includes('fund')||t.includes('invest')||t.includes('billion')||t.includes('startup'))return'Business';
+  if(t.includes('safety')||t.includes('ethics')||t.includes('risk')||t.includes('bias'))return'AI Safety';
+  return'AI News';
+}
+function fmtDate(s){
+  if(!s)return''; const d=new Date(s); if(isNaN(d))return s;
+  const diff=Math.floor((Date.now()-d)/60000);
+  if(diff<60)return diff+'m ago'; if(diff<1440)return Math.floor(diff/60)+'h ago';
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+function strip(h){ return h.replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim(); }
+function esc(s){ if(!s)return''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function loadFallback(){
+  allArticles=[
+    {cat:'Models',title:'Gemini 3.1 Pro dominates 13 of 16 AI benchmarks',summary:'Scores 77.1% on ARC-AGI-2 — more than double its predecessor.',body:'Google\'s Gemini 3.1 Pro dominates 13 of 16 major benchmarks.',url:'https://blog.google',image:'',source:'Google Blog',date:'Mar 2026'},
+    {cat:'Policy',title:'Anthropic sues Pentagon over "supply chain risk" label',summary:'Legal clash escalates as 30+ industry employees sign amicus brief.',body:'Anthropic filed suit after being classified as a supply chain risk.',url:'https://axios.com',image:'',source:'Axios',date:'Mar 11, 2026'},
+    {cat:'Business',title:'OpenAI to introduce ads in ChatGPT with "Sponsored" labels',summary:'Revenue push driven by massive data center expansion costs.',body:'OpenAI announced advertising will come to ChatGPT.',url:'https://axios.com',image:'',source:'Axios',date:'Jan 17, 2026'},
+    {cat:'Research',title:'Claude Opus 4.6 introduces adaptive thinking mode',summary:'Model automatically decides when deeper reasoning is needed.',body:'Anthropic\'s Claude Opus 4.6 introduces adaptive thinking.',url:'https://anthropic.com',image:'',source:'Anthropic',date:'Feb 2026'},
+    {cat:'Industry',title:'US cloud AI infrastructure spend to hit $600B in 2026',summary:'Investment doubles from 2024 as AI enters deployment phase.',body:'US cloud providers projected to spend $600B on AI in 2026.',url:'https://cfr.org',image:'',source:'CFR',date:'Jan 2026'},
+    {cat:'Products',title:'Samsung Galaxy S26 bets on agentic AI as infrastructure',summary:'Galaxy Unpacked 2026 all about background AI automation.',body:'Samsung unveiled the Galaxy S26 series with agentic AI.',url:'https://samsung.com',image:'',source:'Samsung',date:'Feb 25, 2026'},
+    {cat:'Policy',title:'Italy, Denmark ban government use of DeepSeek',summary:'Data security concerns prompt bans across EU nations.',body:'Multiple European countries banned government use of DeepSeek.',url:'https://llm-stats.com',image:'',source:'LLM Stats',date:'Feb 2026'},
+  ];
+  render(); setStatus('','Showing cached stories · Add API key for live news');
+}
+
+loadNews();
+setInterval(loadNews, 30 * 60 * 1000);
+</script>
+
+<script>
+// ── PAGE LOAD TIME ──
+window.addEventListener('load', function() {
+  const t = performance.now();
+  const sec = (t / 1000).toFixed(2);
+  const el = document.getElementById('page-load-time');
+  if (el) el.textContent = `Page load: ${sec}s`;
+});
+
+// ── GOOGLE ANALYTICS — TRACK ARTICLE CLICKS ──
+// Every time a user opens an article, we fire a GA event
+// so you can see which stories are most popular in Analytics.
+function trackArticleOpen(title) {
+  if (typeof gtag !== 'undefined') {
+    gtag('event', 'article_open', {
+      event_category: 'engagement',
+      event_label: title,
+    });
+  }
+}
+
+// ── TRACK PREMIUM BUTTON CLICKS ──
+function trackPremiumClick(plan) {
+  if (typeof gtag !== 'undefined') {
+    gtag('event', 'premium_click', {
+      event_category: 'revenue',
+      event_label: plan,
+    });
+  }
+}
+
+// ── PATCH openArticle to fire GA events ──
+const _origOpen = window.openArticle;
+window.openArticle = function(i) {
+  _origOpen(i);
+  const list = getFiltered();
+  if (list[i]) trackArticleOpen(list[i].title);
+};
+
+// ── PATCH payRazorpay to fire GA events ──
+const _origPay = window.payRazorpay;
+window.payRazorpay = function(plan) {
+  trackPremiumClick(plan);
+  _origPay(plan);
+};
+
+// ── REALTIME VISITOR SIMULATION (replace with GA Data API for real data) ──
+// Shows a friendly "N people reading now" message.
+// For real realtime data, connect Google Analytics Data API.
+function updateRealtimeText() {
+  const visitors = Math.floor(Math.random() * 8) + 2;
+  const el = document.getElementById('rt-text');
+  if (el) el.textContent = `${visitors} people reading now`;
+}
+updateRealtimeText();
+setInterval(updateRealtimeText, 30000);
+</script>
+</body>
+</html>
