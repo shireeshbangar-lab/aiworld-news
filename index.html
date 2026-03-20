@@ -413,10 +413,28 @@ footer{margin-top:32px;border-top:0.5px solid var(--border);padding:20px 24px;di
       <div class="newsletter-box">
         <h3>Stay ahead of AI</h3>
         <p>Top 5 AI stories every morning, free.</p>
-        <div class="nl-form">
-          <input class="nl-input" type="email" placeholder="your@email.com">
-          <button class="nl-btn">Subscribe</button>
+
+        <!-- ═══════════════════════════════════════════════
+          NEWSLETTER SETUP — 2 options:
+
+          OPTION A: Mailchimp (recommended, free up to 500 subs)
+          1. Go to mailchimp.com → sign up free
+          2. Audience → Signup forms → Embedded forms
+          3. Copy your form action URL (looks like:
+             https://xyz.us1.list-manage.com/subscribe/post?u=...&id=...)
+          4. Replace MAILCHIMP_URL below with that URL
+
+          OPTION B: Uses mailto as instant fallback (works right now)
+          Replace YOUR_EMAIL below with your email address
+        ════════════════════════════════════════════════ -->
+
+        <div class="nl-form" id="nl-form">
+          <input class="nl-input" type="email" id="nl-email"
+            placeholder="your@email.com"
+            onkeydown="if(event.key==='Enter')nlSubscribe()">
+          <button class="nl-btn" onclick="nlSubscribe()">Subscribe</button>
         </div>
+        <div id="nl-msg" style="display:none;font-size:12px;margin-top:8px;padding:8px 10px;border-radius:6px;"></div>
       </div>
     </div>
 
@@ -908,7 +926,79 @@ setInterval(loadNews, 10 * 60 * 1000); // Refresh every 10 minutes
 </script>
 
 <script>
-// ── PAGE LOAD TIME ──
+// ── NEWSLETTER SUBSCRIBE ──────────────────────────────
+// SETUP: Replace with your Mailchimp form action URL
+// Get it from: Mailchimp → Audience → Signup Forms → Embedded Forms
+const MAILCHIMP_URL = 'https://gmail.us5.list-manage.com/subscribe/post?u=edb7208d74924d72d21bb32e4&id=a2a7add375';
+
+// Fallback email — replace with your own
+const OWNER_EMAIL = 'your@email.com';
+
+function nlSubscribe() {
+  const input = document.getElementById('nl-email');
+  const msg   = document.getElementById('nl-msg');
+  const email = input.value.trim();
+
+  // Validate email
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showNlMsg('Please enter a valid email address.', '#e74c3c', '#fff');
+    input.focus();
+    return;
+  }
+
+  // Option A: Mailchimp
+  if (MAILCHIMP_URL && MAILCHIMP_URL !== 'YOUR_MAILCHIMP_URL') {
+    const form = document.createElement('form');
+    form.action  = MAILCHIMP_URL;
+    form.method  = 'post';
+    form.target  = 'mc_iframe'; // submit silently
+    form.style.display = 'none';
+    const inp = document.createElement('input');
+    inp.name  = 'EMAIL';
+    inp.value = email;
+    form.appendChild(inp);
+    // Hidden anti-bot field Mailchimp requires
+    const bot = document.createElement('input');
+    bot.type  = 'text';
+    bot.name  = 'b_' + MAILCHIMP_URL.split('u=')[1]?.split('&')[0] + '_' + MAILCHIMP_URL.split('id=')[1]?.split('&')[0];
+    bot.value = '';
+    bot.tabIndex = -1;
+    form.appendChild(bot);
+    document.body.appendChild(form);
+    // Create hidden iframe target
+    let iframe = document.getElementById('mc_iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.name = 'mc_iframe';
+      iframe.id   = 'mc_iframe';
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+    }
+    form.submit();
+    form.remove();
+    showNlMsg('🎉 Subscribed! Check your inbox to confirm.', '#0F6E56', '#E1F5EE');
+    input.value = '';
+    return;
+  }
+
+  // Option B: mailto fallback (opens email client)
+  const subject = encodeURIComponent('New AIWorld Newsletter Subscriber');
+  const body    = encodeURIComponent(`New subscriber: ${email}\n\nPlease add to your mailing list.`);
+  window.open(`mailto:${OWNER_EMAIL}?subject=${subject}&body=${body}`);
+  showNlMsg('📧 Opening your email app — please send to complete signup!', '#185FA5', '#E6F1FB');
+  input.value = '';
+}
+
+function showNlMsg(text, color, bg) {
+  const msg = document.getElementById('nl-msg');
+  msg.textContent = text;
+  msg.style.display   = 'block';
+  msg.style.color     = color;
+  msg.style.background = bg;
+  msg.style.border    = `0.5px solid ${color}33`;
+  setTimeout(() => { msg.style.display = 'none'; }, 5000);
+}
+// ─────────────────────────────────────────────────────
 window.addEventListener('load', function() {
   const t = performance.now();
   const sec = (t / 1000).toFixed(2);
