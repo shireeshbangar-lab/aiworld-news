@@ -547,135 +547,114 @@ function setStatus(type, msg) {
 // ══════════════════════════════════════════════════════
 //  NEWS SOURCES — SETUP GUIDE
 //
-//  For freshest news (minutes old), get these FREE keys:
-//
-//  1. GNews API (BEST — real-time, free 10 req/day)
-//     → https://gnews.io → Sign up → Copy API key
-//     → Replace 'YOUR_GNEWS_KEY' below
-//
-//  2. rss2json API key (reduces caching to 15 min)
-//     → https://rss2json.com → Sign up free → Copy key
-//     → Replace 'YOUR_RSS2JSON_KEY' below
-//
-//  Even without keys, site works — just older stories
 // ══════════════════════════════════════════════════════
-const GNEWS_KEY    = 'a5aa865ace54821677957f4995133f24';
-const RSS2JSON_KEY = 'YOUR_RSS2JSON_KEY';  // https://rss2json.com (free)
+//  NEWS ENGINE — Google News RSS (no API key, always live)
+//  Updates every few minutes, completely free, no limits
+// ══════════════════════════════════════════════════════
 
-// RSS feeds via rss2json
-const RSS_SOURCES = [
-  ['TechCrunch',      'https://techcrunch.com/category/artificial-intelligence/feed/'],
-  ['VentureBeat',     'https://venturebeat.com/category/ai/feed/'],
-  ['The Verge',       'https://www.theverge.com/rss/ai-artificial-intelligence/rss.xml'],
-  ['Wired AI',        'https://www.wired.com/feed/category/artificial-intelligence/latest/rss'],
-  ['Ars Technica',    'https://feeds.arstechnica.com/arstechnica/technology-lab'],
-  ['MIT Tech Review', 'https://www.technologyreview.com/feed/'],
+// Google News RSS topics — updates every few minutes, no key needed
+const GOOGLE_NEWS_FEEDS = [
+  { label:'AI General',  url:'https://news.google.com/rss/search?q=artificial+intelligence&hl=en-IN&gl=IN&ceid=IN:en' },
+  { label:'OpenAI',      url:'https://news.google.com/rss/search?q=OpenAI+ChatGPT&hl=en-IN&gl=IN&ceid=IN:en' },
+  { label:'Anthropic',   url:'https://news.google.com/rss/search?q=Anthropic+Claude&hl=en-IN&gl=IN&ceid=IN:en' },
+  { label:'Google AI',   url:'https://news.google.com/rss/search?q=Google+Gemini+AI&hl=en-IN&gl=IN&ceid=IN:en' },
+  { label:'AI Policy',   url:'https://news.google.com/rss/search?q=AI+regulation+policy&hl=en-IN&gl=IN&ceid=IN:en' },
+  { label:'AI Products', url:'https://news.google.com/rss/search?q=AI+product+launch+2026&hl=en-IN&gl=IN&ceid=IN:en' },
+  { label:'LLM',         url:'https://news.google.com/rss/search?q=large+language+model+LLM&hl=en-IN&gl=IN&ceid=IN:en' },
+  { label:'AI Research', url:'https://news.google.com/rss/search?q=AI+research+machine+learning&hl=en-IN&gl=IN&ceid=IN:en' },
 ];
 
-// ── MAIN LOADER ──
+// CORS proxy to fetch Google News RSS from browser
+const PROXY = 'https://api.allorigins.win/get?url=';
+
 async function loadNews() {
-  setStatus('', 'Fetching latest AI news...');
+  setStatus('', 'Fetching latest AI news from Google News...');
 
-  // Run all sources in parallel
-  const [gNewsItems, rssItems, apiItems] = await Promise.all([
-    fetchGNews(),
-    fetchRSS(),
-    fetchNewsAPI()
-  ]);
+  // Fetch all feeds in parallel
+  const results = await Promise.allSettled(
+    GOOGLE_NEWS_FEEDS.map(feed => fetchGoogleFeed(feed))
+  );
 
-  // Merge all, deduplicate by title, sort newest first
+  const allItems = [];
+  results.forEach(r => {
+    if (r.status === 'fulfilled') allItems.push(...r.value);
+  });
+
+  // Deduplicate by title
   const seen = new Set();
-  const merged = [];
-  [...gNewsItems, ...rssItems, ...apiItems].forEach(a => {
-    if (a.title && !seen.has(a.title.trim())) {
-      seen.add(a.title.trim());
-      merged.push(a);
-    }
+  const unique = allItems.filter(a => {
+    const key = a.title.trim().toLowerCase().slice(0, 60);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 
   // Sort newest first
-  merged.sort((a, b) => new Date(b.rawDate || 0) - new Date(a.rawDate || 0));
+  unique.sort((a, b) => new Date(b.rawDate || 0) - new Date(a.rawDate || 0));
 
-  // Filter out anything older than 7 days
-  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const fresh = merged.filter(a => !a.rawDate || new Date(a.rawDate) > sevenDaysAgo);
+  // Keep only last 7 days
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const fresh = unique.filter(a => !a.rawDate || new Date(a.rawDate) > cutoff);
+  const final = fresh.length >= 8 ? fresh : unique;
 
-  const final = fresh.length >= 5 ? fresh : merged;
-
-  if (final.length) {
+  if (final.length >= 3) {
     allArticles = final;
     render();
-    const newest = final[0] ? fmtDate(final[0].rawDate) : '';
+    const newest = final[0]?.date || '';
     setStatus('live', `Live · ${new Date().toLocaleTimeString()} · ${final.length} stories · Newest: ${newest}`);
   } else {
-    loadFallback();
+    // Fallback to NewsAPI if Google News fails
+    await loadFromNewsAPI();
   }
 }
 
-// ── SOURCE 1: GNews API (real-time, most fresh) ──
-async function fetchGNews() {
-  if (!GNEWS_KEY || GNEWS_KEY === 'YOUR_GNEWS_KEY') return [];
+async function fetchGoogleFeed({ label, url }) {
   try {
-    const url = `https://gnews.io/api/v4/search?q=artificial+intelligence+OR+OpenAI+OR+Anthropic+OR+ChatGPT&lang=en&max=20&sortby=publishedAt&token=${GNEWS_KEY}`;
-    const r = await fetch(url);
-    const d = await r.json();
-    if (!d.articles?.length) return [];
-    return d.articles.map(a => ({
-      title:   a.title,
-      summary: a.description || '',
-      body:    a.content || a.description || '',
-      url:     a.url,
-      image:   a.image || '',
-      source:  a.source?.name || '',
-      date:    fmtDate(a.publishedAt),
-      rawDate: a.publishedAt,
-      cat:     guessCat(a.title + ' ' + (a.description || ''))
-    }));
+    const proxyUrl = PROXY + encodeURIComponent(url);
+    const r = await fetch(proxyUrl, { cache: 'no-store' });
+    const data = await r.json();
+    const xml = data.contents;
+    if (!xml) return [];
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xml, 'text/xml');
+    const items = [...doc.querySelectorAll('item')].slice(0, 8);
+
+    return items.map(el => {
+      const title   = el.querySelector('title')?.textContent?.trim() || '';
+      const link    = el.querySelector('link')?.textContent?.trim() || '';
+      const pubDate = el.querySelector('pubDate')?.textContent?.trim() || '';
+      const source  = el.querySelector('source')?.textContent?.trim() || label;
+      // Google News wraps description in CDATA with publisher info
+      const desc    = strip(el.querySelector('description')?.textContent || '').slice(0, 220);
+
+      if (!title || title.length < 10) return null;
+
+      return {
+        title:   title.replace(/ - [^-]+$/, ''), // remove " - Source Name" suffix
+        summary: desc || title,
+        body:    desc || title,
+        url:     link,
+        image:   '',
+        source:  source,
+        date:    fmtDate(pubDate),
+        rawDate: pubDate,
+        cat:     guessCat(title + ' ' + label)
+      };
+    }).filter(Boolean);
   } catch(e) { return []; }
 }
 
-// ── SOURCE 2: RSS via rss2json (with API key = 15 min cache max) ──
-async function fetchRSS() {
-  const items = [];
-  const keyParam = RSS2JSON_KEY !== 'YOUR_RSS2JSON_KEY' ? `&api_key=${RSS2JSON_KEY}` : '';
-
-  const promises = RSS_SOURCES.map(async ([label, feedUrl]) => {
-    try {
-      const url = `https://rss2json.com/api.json?rss_url=${encodeURIComponent(feedUrl)}&count=10&order_by=pubDate&order_dir=desc${keyParam}`;
-      const r = await fetch(url);
-      const d = await r.json();
-      if (d.status !== 'ok' || !d.items?.length) return;
-      d.items.forEach(item => {
-        if (!item.title) return;
-        items.push({
-          title:   item.title.trim(),
-          summary: strip(item.description || item.content || '').slice(0, 220),
-          body:    strip(item.content || item.description || '').slice(0, 1000),
-          url:     item.link,
-          image:   item.thumbnail || item.enclosure?.link || '',
-          source:  label,
-          date:    fmtDate(item.pubDate),
-          rawDate: item.pubDate,
-          cat:     guessCat(item.title + ' ' + (item.description || ''))
-        });
-      });
-    } catch(e) {}
-  });
-
-  await Promise.all(promises);
-  return items;
-}
-
-// ── SOURCE 3: NewsAPI (backup, fills gaps) ──
-async function fetchNewsAPI() {
-  if (!API_KEY) return [];
+// Fallback: NewsAPI if Google News fails
+async function loadFromNewsAPI() {
+  if (!API_KEY) { loadFallback(); return; }
   try {
     const r = await fetch(
-      `https://newsapi.org/v2/everything?q=artificial+intelligence+OR+OpenAI+OR+Anthropic+OR+Gemini&sortBy=publishedAt&pageSize=20&language=en&apiKey=${API_KEY}`
+      `https://newsapi.org/v2/everything?q=artificial+intelligence+OR+OpenAI+OR+Anthropic+OR+Gemini&sortBy=publishedAt&pageSize=24&language=en&apiKey=${API_KEY}`
     );
     const d = await r.json();
-    if (d.status !== 'ok' || !d.articles?.length) return [];
-    return d.articles
+    if (d.status !== 'ok' || !d.articles?.length) { loadFallback(); return; }
+    allArticles = d.articles
       .filter(a => a.title && a.title !== '[Removed]' && a.description)
       .map(a => ({
         title:   a.title,
@@ -688,7 +667,9 @@ async function fetchNewsAPI() {
         rawDate: a.publishedAt,
         cat:     guessCat(a.title + ' ' + (a.description || ''))
       }));
-  } catch(e) { return []; }
+    render();
+    setStatus('live', `Live · ${new Date().toLocaleTimeString()} · NewsAPI · ${allArticles.length} stories`);
+  } catch(e) { loadFallback(); }
 }
 
 function render() {
