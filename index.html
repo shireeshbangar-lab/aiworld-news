@@ -160,6 +160,7 @@ nav{border-bottom:0.5px solid var(--border);padding:0 24px;display:flex;overflow
 .more-num{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--border2);line-height:1;min-width:24px;flex-shrink:0;padding-top:2px;}
 .more-cat{font-size:9px;text-transform:uppercase;letter-spacing:0.7px;color:var(--info);margin-bottom:3px;}
 .more-title{font-size:13px;font-weight:500;line-height:1.4;color:var(--text);transition:color 0.12s;}
+.more-summary{font-size:12px;color:var(--text2);line-height:1.55;margin-top:3px;margin-bottom:2px;}
 .more-meta{font-size:10px;color:var(--text3);margin-top:3px;}
 
 .sidebar-section{border:0.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;}
@@ -172,6 +173,7 @@ nav{border-bottom:0.5px solid var(--border);padding:0 24px;display:flex;overflow
 .trend-item:nth-child(2) .trend-num{color:var(--text2);}
 .trend-cat{font-size:9px;text-transform:uppercase;letter-spacing:0.7px;color:var(--info);margin-bottom:2px;}
 .trend-title{font-size:12px;font-weight:500;line-height:1.38;color:var(--text);}
+.trend-summary{font-size:11px;color:var(--text2);line-height:1.5;margin-top:3px;}
 .trend-meta{font-size:10px;color:var(--text3);margin-top:2px;}
 
 .tag-wrap{padding:12px 14px;display:flex;flex-wrap:wrap;gap:7px;}
@@ -685,6 +687,28 @@ function getFiltered() {
   const f=allArticles.filter(a=>a.cat.toLowerCase().includes(currentFilter));
   return f.length?f:allArticles;
 }
+// ── SUMMARY HELPER ──
+// Builds a clean 2-3 sentence summary distinct from the title
+function buildSummary(a, maxLen) {
+  let s = a.summary || a.body || '';
+  // If summary is basically the same as the title, use body instead
+  if (!s || s.toLowerCase().slice(0,40) === a.title.toLowerCase().slice(0,40)) {
+    s = a.body || s;
+  }
+  s = s.trim();
+  // If still too similar or empty, build a contextual one from title words
+  if (!s || s.length < 30) {
+    return `Read the full story from ${esc(a.source)} — published ${a.date}.`;
+  }
+  // Truncate cleanly at a sentence boundary if possible
+  if (s.length > maxLen) {
+    const cut = s.slice(0, maxLen);
+    const lastDot = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+    return (lastDot > maxLen * 0.5 ? cut.slice(0, lastDot + 1) : cut + '…');
+  }
+  return s;
+}
+
 function renderHero(a) {
   if (!a) return;
   document.getElementById('hero-area').innerHTML=`
@@ -698,31 +722,44 @@ function renderHero(a) {
       </div>
       <div class="hero-body">
         <div class="hero-meta">${esc(a.source)} · ${a.date}</div>
-        <div class="hero-summary">${esc(a.summary)}</div>
+        <div class="hero-summary">${esc(buildSummary(a, 320))}</div>
       </div>
     </div>`;
 }
+
 function renderGrid(items) {
   document.getElementById('story-grid').innerHTML=items.map((a,i)=>`
     <div class="story-card" onclick="openArticle(${i+1})">
       <div class="story-cat">${esc(a.cat)}</div>
       <div class="story-title">${esc(a.title)}</div>
-      <div class="story-summary">${esc(a.summary.slice(0,110))}...</div>
+      <div class="story-summary">${esc(buildSummary(a, 180))}</div>
       <div class="story-meta">${a.date} · ${esc(a.source)}</div>
     </div>`).join('');
 }
+
 function renderMore(items) {
   document.getElementById('more-stories').innerHTML=items.map((a,i)=>`
     <div class="more-item" onclick="openArticle(${i+5})">
       <div class="more-num">${i+1}</div>
-      <div><div class="more-cat">${esc(a.cat)}</div><div class="more-title">${esc(a.title)}</div><div class="more-meta">${a.date} · ${esc(a.source)}</div></div>
+      <div>
+        <div class="more-cat">${esc(a.cat)}</div>
+        <div class="more-title">${esc(a.title)}</div>
+        <div class="more-summary">${esc(buildSummary(a, 160))}</div>
+        <div class="more-meta">${a.date} · ${esc(a.source)}</div>
+      </div>
     </div>`).join('');
 }
+
 function renderTrending(items) {
   document.getElementById('trend-list').innerHTML=items.map((a,i)=>`
     <div class="trend-item" onclick="openArticle(${i})">
       <div class="trend-num">${i+1}</div>
-      <div><div class="trend-cat">${esc(a.cat)}</div><div class="trend-title">${esc(a.title)}</div><div class="trend-meta">${a.date} · ${esc(a.source)}</div></div>
+      <div>
+        <div class="trend-cat">${esc(a.cat)}</div>
+        <div class="trend-title">${esc(a.title)}</div>
+        <div class="trend-summary">${esc(buildSummary(a, 130))}</div>
+        <div class="trend-meta">${a.date} · ${esc(a.source)}</div>
+      </div>
     </div>`).join('');
 }
 function renderTicker(items) {
