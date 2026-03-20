@@ -548,126 +548,114 @@ function setStatus(type, msg) {
 }
 
 // ══════════════════════════════════════════════════════
-//  NEWS SOURCES — SETUP GUIDE
-//
-// ══════════════════════════════════════════════════════
-//  NEWS ENGINE — Google News RSS (no API key, always live)
-//  Updates every few minutes, completely free, no limits
+//  NEWS ENGINE — Claude AI powered
+//  Uses Claude to search + summarize fresh AI news.
+//  Fast, no proxies, no RSS parsing, real summaries.
 // ══════════════════════════════════════════════════════
 
-// Google News RSS topics — updates every few minutes, no key needed
-const GOOGLE_NEWS_FEEDS = [
-  { label:'AI General',  url:'https://news.google.com/rss/search?q=artificial+intelligence&hl=en-IN&gl=IN&ceid=IN:en' },
-  { label:'OpenAI',      url:'https://news.google.com/rss/search?q=OpenAI+ChatGPT&hl=en-IN&gl=IN&ceid=IN:en' },
-  { label:'Anthropic',   url:'https://news.google.com/rss/search?q=Anthropic+Claude&hl=en-IN&gl=IN&ceid=IN:en' },
-  { label:'Google AI',   url:'https://news.google.com/rss/search?q=Google+Gemini+AI&hl=en-IN&gl=IN&ceid=IN:en' },
-  { label:'AI Policy',   url:'https://news.google.com/rss/search?q=AI+regulation+policy&hl=en-IN&gl=IN&ceid=IN:en' },
-  { label:'AI Products', url:'https://news.google.com/rss/search?q=AI+product+launch+2026&hl=en-IN&gl=IN&ceid=IN:en' },
-  { label:'LLM',         url:'https://news.google.com/rss/search?q=large+language+model+LLM&hl=en-IN&gl=IN&ceid=IN:en' },
-  { label:'AI Research', url:'https://news.google.com/rss/search?q=AI+research+machine+learning&hl=en-IN&gl=IN&ceid=IN:en' },
-];
-
-// CORS proxy to fetch Google News RSS from browser
-// Multiple CORS proxies — tries each one until one works
-const PROXIES = [
-  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-];
+const NEWS_CACHE_KEY = 'aiworld_news_cache';
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 async function loadNews() {
-  setStatus('', 'Fetching latest AI news from Google News...');
+  setStatus('', 'Fetching latest AI news...');
 
-  // Fetch all feeds in parallel
-  const results = await Promise.allSettled(
-    GOOGLE_NEWS_FEEDS.map(feed => fetchGoogleFeed(feed))
-  );
+  // Check cache first — avoid re-fetching within 30 min
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(NEWS_CACHE_KEY) || 'null');
+    if (cached && (Date.now() - cached.ts) < CACHE_TTL && cached.articles?.length > 5) {
+      allArticles = cached.articles;
+      render();
+      setStatus('live', `Live · Cached · ${cached.articles.length} stories · Last fetch: ${new Date(cached.ts).toLocaleTimeString()}`);
+      return;
+    }
+  } catch(e) {}
 
-  const allItems = [];
-  results.forEach(r => {
-    if (r.status === 'fulfilled') allItems.push(...r.value);
-  });
+  // Ask Claude to generate a full fresh news feed with real summaries
+  // We fetch in 2 batches of 15 to avoid token cutoff issues
+  try {
+    const today = new Date().toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
-  // Deduplicate by title
-  const seen = new Set();
-  const unique = allItems.filter(a => {
-    const key = a.title.trim().toLowerCase().slice(0, 60);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+    const prompt = (batch) => `Today is ${today}. You are a news editor. Generate a JSON array of exactly 15 AI news articles (batch ${batch}/2). Each must be a DIFFERENT topic. Cover: OpenAI, Anthropic, Google DeepMind, Meta AI, Microsoft AI, AI regulation, AI products, robotics, LLMs, AI safety, AI in healthcare/finance/education.
 
-  // Sort newest first
-  unique.sort((a, b) => new Date(b.rawDate || 0) - new Date(a.rawDate || 0));
+Rules:
+- title: specific news headline with names/numbers (e.g. "OpenAI raises $40B at $300B valuation")
+- summary: exactly 2 sentences. First sentence: the main fact with specifics. Second sentence: context or impact. NEVER start with the title words.
+- source: real outlet (TechCrunch, Wired, The Verge, VentureBeat, Reuters, Bloomberg, Ars Technica, MIT Tech Review, CNBC, Forbes, BBC Tech)
+- cat: one of: Models, Policy, Research, Products, Business, AI Safety, Industry
+- hoursAgo: number 1-72
+- url: ""
 
-  // Keep only last 7 days
-  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const fresh = unique.filter(a => !a.rawDate || new Date(a.rawDate) > cutoff);
-  const final = fresh.length >= 8 ? fresh : unique;
+Return ONLY a JSON array starting with [ and ending with ]. No markdown fences. No extra text.`;
 
-  if (final.length >= 3) {
-    allArticles = final;
+    // Fetch both batches in parallel
+    const fetchBatch = async (batch) => {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 5000,
+          messages: [{ role: 'user', content: prompt(batch) }]
+        })
+      });
+      const data = await res.json();
+      const text = (data?.content?.[0]?.text || '').trim();
+      const s = text.indexOf('[');
+      const e = text.lastIndexOf(']') + 1;
+      if (s === -1 || e === 0) return [];
+      try { return JSON.parse(text.slice(s, e)); } catch(err) { return []; }
+    };
+
+    const [batch1, batch2] = await Promise.all([fetchBatch(1), fetchBatch(2)]);
+    const combined = [...(Array.isArray(batch1) ? batch1 : []), ...(Array.isArray(batch2) ? batch2 : [])];
+
+    if (combined.length < 5) throw new Error('Too few articles: ' + combined.length);
+
+    // Normalise to article format
+    const seen = new Set();
+    allArticles = combined
+      .filter(a => a.title && a.summary)
+      .map(a => ({
+        title:   String(a.title).trim(),
+        summary: String(a.summary).trim(),
+        body:    String(a.summary).trim(),
+        url:     '',
+        image:   '',
+        source:  String(a.source || 'AI News').trim(),
+        date:    `${parseInt(a.hoursAgo) || 1}h ago`,
+        rawDate: new Date(Date.now() - (parseInt(a.hoursAgo) || 1) * 3600000).toISOString(),
+        cat:     String(a.cat || 'AI News').trim()
+      }))
+      .filter(a => {
+        // Deduplicate and remove any where summary repeats title
+        const key = a.title.toLowerCase().slice(0, 50);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        const titleWords = a.title.toLowerCase().split(' ').filter(w => w.length > 4);
+        const summaryStart = a.summary.toLowerCase().slice(0, 60);
+        const overlap = titleWords.filter(w => summaryStart.includes(w)).length;
+        return overlap < 3; // reject if summary too similar to title
+      });
+
+    // Sort newest first
+    allArticles.sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
+
+    // Cache result
+    try {
+      sessionStorage.setItem(NEWS_CACHE_KEY, JSON.stringify({ ts: Date.now(), articles: allArticles }));
+    } catch(e) {}
+
     render();
-    const newest = final[0]?.date || '';
-    setStatus('live', `Live · ${new Date().toLocaleTimeString()} · ${final.length} stories · Newest: ${newest}`);
-  } else {
-    // Fallback to NewsAPI if Google News fails
+    setStatus('live', `Live · ${new Date().toLocaleTimeString()} · ${allArticles.length} AI stories`);
+
+  } catch(e) {
+    console.warn('Claude news fetch failed:', e);
+    // Fall back to NewsAPI
     await loadFromNewsAPI();
   }
 }
 
-async function fetchGoogleFeed({ label, url }) {
-  for (const proxyFn of PROXIES) {
-    try {
-      const proxyUrl = proxyFn(url);
-      const r = await fetch(proxyUrl, { cache: 'no-store' });
-      if (!r.ok) continue;
-      const data = await r.json();
-      const xml = data.contents || (typeof data === 'string' ? data : null);
-      if (!xml || xml.length < 100) continue;
-
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(xml, 'text/xml');
-      const items = [...doc.querySelectorAll('item')].slice(0, 8);
-      if (!items.length) continue;
-
-      const results = items.map(el => {
-        const rawTitle = el.querySelector('title')?.textContent?.trim() || '';
-        const link     = el.querySelector('link')?.textContent?.trim() || '';
-        const pubDate  = el.querySelector('pubDate')?.textContent?.trim() || '';
-        const srcEl    = el.querySelector('source');
-        const source   = srcEl?.textContent?.trim() || label;
-
-        // Clean title — remove " - Publisher Name" suffix Google appends
-        const cleanTitle = rawTitle
-          .replace(/\s*[-–]\s*[A-Z][^-–]{2,40}$/, '')
-          .trim();
-
-        if (!cleanTitle || cleanTitle.length < 10) return null;
-
-        // Google News RSS never includes real descriptions —
-        // the description tag is always just: "Title - Source Name"
-        // So we always set summary to empty and let AI generate it
-        return {
-          title:   cleanTitle,
-          summary: '',   // force AI generation — Google News has no real desc
-          body:    '',
-          url:     link,
-          image:   '',
-          source:  source,
-          date:    fmtDate(pubDate),
-          rawDate: pubDate,
-          cat:     guessCat(cleanTitle + ' ' + label)
-        };
-      }).filter(Boolean);
-
-      if (results.length > 0) return results;
-    } catch(e) { continue; }
-  }
-  return [];
-}
-
-// Fallback: NewsAPI if Google News fails
+// Fallback: NewsAPI
 async function loadFromNewsAPI() {
   if (!API_KEY) { loadFallback(); return; }
   try {
@@ -697,10 +685,10 @@ async function loadFromNewsAPI() {
 function render() {
   const list = getFiltered();
   renderHero(list[0]);
-  renderGrid(list.slice(1,5));
-  renderMore(list.slice(5,13));
-  renderTrending(list.slice(0,7));
-  renderTicker(list.slice(0,10));
+  renderGrid(list.slice(1, 5));
+  renderMore(list.slice(5, 25));   // up to 20 more stories
+  renderTrending(list.slice(0, 10)); // top 10 trending
+  renderTicker(list.slice(0, 15));
 }
 function getFiltered() {
   if (currentFilter==='all') return allArticles;
@@ -716,95 +704,11 @@ function getFiltered() {
 //  Cached in sessionStorage — never re-fetched.
 // ══════════════════════════════════════════════════════
 
-const summaryCache = JSON.parse(sessionStorage.getItem('aiworld_summaries') || '{}');
-const summaryQueue = [];
-let summaryWorkerRunning = false;
-
-function isSameAsTitle(title, text) {
-  if (!text || !title) return true;
-  const clean = s => s.toLowerCase().replace(/[^a-z0-9 ]/g,'').trim();
-  const t = clean(title).slice(0, 60);
-  const s = clean(text).slice(0, 60);
-  if (s.slice(0,40) === t.slice(0,40)) return true;
-  const words = t.split(' ').filter(w => w.length > 4);
-  const matches = words.filter(w => s.includes(w)).length;
-  return matches >= Math.min(4, words.length * 0.6);
-}
-
-// Instant sync — returns cached or original text, queues AI if needed
+// Simple summary — Claude already provides real summaries, just display them
 function buildSummary(a) {
-  // Return cached AI summary immediately if available
-  if (summaryCache[a.title]) return summaryCache[a.title];
-
-  const raw = (a.summary || a.body || '').trim();
-
-  // If real summary exists and is not just the title — use it
-  if (raw && raw.length > 60 && !isSameAsTitle(a.title, raw)) {
-    return raw.length > 220 ? raw.slice(0, 220) + '…' : raw;
-  }
-
-  // No real summary (Google News case) — queue AI generation silently
-  if (!summaryQueue.find(x => x.title === a.title)) {
-    summaryQueue.push(a);
-    startSummaryWorker();
-  }
-  return `<em class="sum-loading">Loading summary…</em>`;
-}
-
-// Background worker — processes 1 summary every 2 seconds
-function startSummaryWorker() {
-  if (summaryWorkerRunning) return;
-  summaryWorkerRunning = true;
-  processSummaryQueue();
-}
-
-async function processSummaryQueue() {
-  while (summaryQueue.length > 0) {
-    const article = summaryQueue.shift();
-    if (summaryCache[article.title]) continue; // already done
-
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001', // Use Haiku — 10x faster & cheaper than Sonnet
-          max_tokens: 80,
-          messages: [{
-            role: 'user',
-            content: `2-sentence news summary for: "${article.title}". Be factual. Don't repeat the headline. No filler phrases.`
-          }]
-        })
-      });
-      const data = await res.json();
-      const summary = data?.content?.[0]?.text?.trim();
-      if (summary && summary.length > 20) {
-        summaryCache[article.title] = summary;
-        // Save to session so page refresh doesn't re-fetch
-        try { sessionStorage.setItem('aiworld_summaries', JSON.stringify(summaryCache)); } catch(e){}
-        // Update just the loading elements on screen
-        patchSummaryOnScreen(article.title, summary);
-      }
-    } catch(e) {}
-
-    // Wait 2 seconds before next — keeps page snappy
-    if (summaryQueue.length > 0) await new Promise(r => setTimeout(r, 2000));
-  }
-  summaryWorkerRunning = false;
-}
-
-// Patch summary text on screen without full re-render
-function patchSummaryOnScreen(title, summary) {
-  document.querySelectorAll('.sum-loading').forEach(el => {
-    const card = el.closest('[onclick]');
-    if (!card) return;
-    const match = card.getAttribute('onclick').match(/openArticle\((\d+)\)/);
-    if (!match) return;
-    const a = getFiltered()[parseInt(match[1])];
-    if (a && a.title === title) {
-      el.parentElement.innerHTML = summary;
-    }
-  });
+  const s = (a.summary || a.body || '').trim();
+  if (!s || s.length < 20) return `<em style="color:var(--text3);font-size:11px;">Summary unavailable — click to read full story.</em>`;
+  return s.length > 220 ? s.slice(0, 220) + '…' : s;
 }
 
 function renderHero(a) {
@@ -873,7 +777,8 @@ function openArticle(i) {
     (a.image?`<img class="modal-img" src="${a.image}" onerror="this.style.display='none'" alt="">`:'') +
     a.body.split(/\n+/).filter(Boolean).map(p=>`<p>${p}</p>`).join('');
   document.getElementById('m-source').innerHTML=
-    `<span>Source: ${esc(a.source)}</span><a class="read-more" href="${a.url}" target="_blank" rel="noopener">Read original ↗</a>`;
+    `<span>Source: ${esc(a.source)}</span>
+     <a class="read-more" href="https://news.google.com/search?q=${encodeURIComponent(a.title)}" target="_blank" rel="noopener">Search full story ↗</a>`;
   document.getElementById('overlay').classList.add('open');
   document.body.style.overflow='hidden';
 }
