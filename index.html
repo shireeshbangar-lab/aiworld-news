@@ -175,6 +175,7 @@ nav{border-bottom:0.5px solid var(--border);padding:0 24px;display:flex;overflow
 .trend-title{font-size:12px;font-weight:500;line-height:1.38;color:var(--text);}
 .trend-summary{font-size:11px;color:var(--text2);line-height:1.5;margin-top:3px;}
 .trend-meta{font-size:10px;color:var(--text3);margin-top:2px;}
+.sum-loading{font-size:11px;color:var(--text3);font-style:italic;animation:blink 1.4s ease-in-out infinite;}
 
 .tag-wrap{padding:12px 14px;display:flex;flex-wrap:wrap;gap:7px;}
 .tag{font-size:11px;padding:4px 10px;border-radius:99px;border:0.5px solid var(--border2);cursor:pointer;color:var(--text2);transition:border-color 0.12s,color 0.12s;background:none;}
@@ -622,7 +623,6 @@ async function fetchGoogleFeed({ label, url }) {
       const r = await fetch(proxyUrl, { cache: 'no-store' });
       if (!r.ok) continue;
       const data = await r.json();
-      // allorigins returns {contents:...}, codetabs returns raw text
       const xml = data.contents || (typeof data === 'string' ? data : null);
       if (!xml || xml.length < 100) continue;
 
@@ -632,27 +632,26 @@ async function fetchGoogleFeed({ label, url }) {
       if (!items.length) continue;
 
       const results = items.map(el => {
-        const title   = el.querySelector('title')?.textContent?.trim() || '';
-        const link    = el.querySelector('link')?.textContent?.trim() || '';
-        const pubDate = el.querySelector('pubDate')?.textContent?.trim() || '';
-        const srcEl   = el.querySelector('source');
-        const source  = srcEl?.textContent?.trim() || label;
-        // Google News puts full article description in the description tag
-        const rawDesc = el.querySelector('description')?.textContent || '';
-        const desc    = strip(rawDesc).replace(/^[^.!?]*?:\s*/,'').trim();
-        // Clean title: remove " - Publisher" suffix Google adds
-        const cleanTitle = title.replace(/\s*-\s*[^-]{3,40}$/, '').trim();
+        const rawTitle = el.querySelector('title')?.textContent?.trim() || '';
+        const link     = el.querySelector('link')?.textContent?.trim() || '';
+        const pubDate  = el.querySelector('pubDate')?.textContent?.trim() || '';
+        const srcEl    = el.querySelector('source');
+        const source   = srcEl?.textContent?.trim() || label;
+
+        // Clean title — remove " - Publisher Name" suffix Google appends
+        const cleanTitle = rawTitle
+          .replace(/\s*[-–]\s*[A-Z][^-–]{2,40}$/, '')
+          .trim();
 
         if (!cleanTitle || cleanTitle.length < 10) return null;
 
-        // Build a meaningful 2-3 sentence summary from description
-        const sentences = desc.match(/[^.!?]+[.!?]+/g) || [];
-        const summary2 = sentences.slice(0, 3).join(' ').trim() || desc.slice(0, 200) || cleanTitle;
-
+        // Google News RSS never includes real descriptions —
+        // the description tag is always just: "Title - Source Name"
+        // So we always set summary to empty and let AI generate it
         return {
           title:   cleanTitle,
-          summary: summary2 || desc || cleanTitle,
-          body:    desc || cleanTitle,
+          summary: '',   // force AI generation — Google News has no real desc
+          body:    '',
           url:     link,
           image:   '',
           source:  source,
@@ -662,10 +661,10 @@ async function fetchGoogleFeed({ label, url }) {
         };
       }).filter(Boolean);
 
-      if (results.length > 0) return results; // success — stop trying proxies
+      if (results.length > 0) return results;
     } catch(e) { continue; }
   }
-  return []; // all proxies failed
+  return [];
 }
 
 // Fallback: NewsAPI if Google News fails
@@ -710,24 +709,102 @@ function getFiltered() {
 }
 // ── SUMMARY HELPER ──
 // Builds a clean 2-3 sentence summary distinct from the title
-function buildSummary(a, maxLen) {
-  let s = a.summary || a.body || '';
-  // If summary is basically the same as the title, use body instead
-  if (!s || s.toLowerCase().slice(0,40) === a.title.toLowerCase().slice(0,40)) {
-    s = a.body || s;
+// ══════════════════════════════════════════════════════
+//  SMART SUMMARY ENGINE
+//  Page loads instantly. Summaries generate silently
+//  in the background — 1 at a time, 2s apart.
+//  Cached in sessionStorage — never re-fetched.
+// ══════════════════════════════════════════════════════
+
+const summaryCache = JSON.parse(sessionStorage.getItem('aiworld_summaries') || '{}');
+const summaryQueue = [];
+let summaryWorkerRunning = false;
+
+function isSameAsTitle(title, text) {
+  if (!text || !title) return true;
+  const clean = s => s.toLowerCase().replace(/[^a-z0-9 ]/g,'').trim();
+  const t = clean(title).slice(0, 60);
+  const s = clean(text).slice(0, 60);
+  if (s.slice(0,40) === t.slice(0,40)) return true;
+  const words = t.split(' ').filter(w => w.length > 4);
+  const matches = words.filter(w => s.includes(w)).length;
+  return matches >= Math.min(4, words.length * 0.6);
+}
+
+// Instant sync — returns cached or original text, queues AI if needed
+function buildSummary(a) {
+  // Return cached AI summary immediately if available
+  if (summaryCache[a.title]) return summaryCache[a.title];
+
+  const raw = (a.summary || a.body || '').trim();
+
+  // If real summary exists and is not just the title — use it
+  if (raw && raw.length > 60 && !isSameAsTitle(a.title, raw)) {
+    return raw.length > 220 ? raw.slice(0, 220) + '…' : raw;
   }
-  s = s.trim();
-  // If still too similar or empty, build a contextual one from title words
-  if (!s || s.length < 30) {
-    return `Read the full story from ${esc(a.source)} — published ${a.date}.`;
+
+  // No real summary (Google News case) — queue AI generation silently
+  if (!summaryQueue.find(x => x.title === a.title)) {
+    summaryQueue.push(a);
+    startSummaryWorker();
   }
-  // Truncate cleanly at a sentence boundary if possible
-  if (s.length > maxLen) {
-    const cut = s.slice(0, maxLen);
-    const lastDot = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
-    return (lastDot > maxLen * 0.5 ? cut.slice(0, lastDot + 1) : cut + '…');
+  return `<em class="sum-loading">Loading summary…</em>`;
+}
+
+// Background worker — processes 1 summary every 2 seconds
+function startSummaryWorker() {
+  if (summaryWorkerRunning) return;
+  summaryWorkerRunning = true;
+  processSummaryQueue();
+}
+
+async function processSummaryQueue() {
+  while (summaryQueue.length > 0) {
+    const article = summaryQueue.shift();
+    if (summaryCache[article.title]) continue; // already done
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001', // Use Haiku — 10x faster & cheaper than Sonnet
+          max_tokens: 80,
+          messages: [{
+            role: 'user',
+            content: `2-sentence news summary for: "${article.title}". Be factual. Don't repeat the headline. No filler phrases.`
+          }]
+        })
+      });
+      const data = await res.json();
+      const summary = data?.content?.[0]?.text?.trim();
+      if (summary && summary.length > 20) {
+        summaryCache[article.title] = summary;
+        // Save to session so page refresh doesn't re-fetch
+        try { sessionStorage.setItem('aiworld_summaries', JSON.stringify(summaryCache)); } catch(e){}
+        // Update just the loading elements on screen
+        patchSummaryOnScreen(article.title, summary);
+      }
+    } catch(e) {}
+
+    // Wait 2 seconds before next — keeps page snappy
+    if (summaryQueue.length > 0) await new Promise(r => setTimeout(r, 2000));
   }
-  return s;
+  summaryWorkerRunning = false;
+}
+
+// Patch summary text on screen without full re-render
+function patchSummaryOnScreen(title, summary) {
+  document.querySelectorAll('.sum-loading').forEach(el => {
+    const card = el.closest('[onclick]');
+    if (!card) return;
+    const match = card.getAttribute('onclick').match(/openArticle\((\d+)\)/);
+    if (!match) return;
+    const a = getFiltered()[parseInt(match[1])];
+    if (a && a.title === title) {
+      el.parentElement.innerHTML = summary;
+    }
+  });
 }
 
 function renderHero(a) {
@@ -743,7 +820,7 @@ function renderHero(a) {
       </div>
       <div class="hero-body">
         <div class="hero-meta">${esc(a.source)} · ${a.date}</div>
-        <div class="hero-summary">${esc(buildSummary(a, 320))}</div>
+        <div class="hero-summary">${buildSummary(a)}</div>
       </div>
     </div>`;
 }
@@ -753,7 +830,7 @@ function renderGrid(items) {
     <div class="story-card" onclick="openArticle(${i+1})">
       <div class="story-cat">${esc(a.cat)}</div>
       <div class="story-title">${esc(a.title)}</div>
-      <div class="story-summary">${esc(buildSummary(a, 180))}</div>
+      <div class="story-summary">${buildSummary(a)}</div>
       <div class="story-meta">${a.date} · ${esc(a.source)}</div>
     </div>`).join('');
 }
@@ -765,7 +842,7 @@ function renderMore(items) {
       <div>
         <div class="more-cat">${esc(a.cat)}</div>
         <div class="more-title">${esc(a.title)}</div>
-        <div class="more-summary">${esc(buildSummary(a, 160))}</div>
+        <div class="more-summary">${buildSummary(a)}</div>
         <div class="more-meta">${a.date} · ${esc(a.source)}</div>
       </div>
     </div>`).join('');
@@ -778,7 +855,7 @@ function renderTrending(items) {
       <div>
         <div class="trend-cat">${esc(a.cat)}</div>
         <div class="trend-title">${esc(a.title)}</div>
-        <div class="trend-summary">${esc(buildSummary(a, 130))}</div>
+        <div class="trend-summary">${buildSummary(a)}</div>
         <div class="trend-meta">${a.date} · ${esc(a.source)}</div>
       </div>
     </div>`).join('');
