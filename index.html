@@ -665,14 +665,8 @@ async function loadNews() {
   }
 
   if (allFetched.length >= 5) {
-    // Deduplicate
-    const seen = new Set();
-    allArticles = allFetched.filter(a => {
-      const key = a.title.toLowerCase().slice(0, 50);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    // Deduplicate strictly before caching/rendering.
+    allArticles = dedupeArticles(allFetched);
 
     // Sort newest first
     allArticles.sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
@@ -769,7 +763,8 @@ async function loadFromRssFeeds() {
     if (result.status !== 'fulfilled') return;
     const data = result.value;
     if (!data || data.status !== 'ok' || !Array.isArray(data.items)) return;
-    data.items.forEach((item) => items.push(item));
+    const feedSource = data?.feed?.title || 'RSS Feed';
+    data.items.forEach((item) => items.push({ ...item, _feedSource: feedSource }));
   });
 
   return items
@@ -783,7 +778,7 @@ async function loadFromRssFeeds() {
         body: text || 'Tap to read the full article.',
         url: String(item.link).trim(),
         image: item?.thumbnail || '',
-        source: item?.author || item?.categories?.[0] || 'RSS Feed',
+        source: item?._feedSource || item?.author || 'RSS Feed',
         date: fmtDate(dateISO),
         rawDate: dateISO,
         cat: guessCat(`${item.title} ${text}`)
@@ -870,18 +865,18 @@ Return ONLY the JSON array. No markdown. No explanation.`
 
 function render() {
   const list = getFiltered();
-  const uniqueList = dedupeByTitleAndSource(list);
+  const uniqueList = dedupeArticles(list);
   currentRenderArticles = uniqueList;
   const total = uniqueList.length;
 
-  // Keep all visible sections mutually exclusive so the same story never repeats.
+  // Keep all sections mutually exclusive and ensure "More Stories" is populated whenever possible.
   const heroIndex = 0;
   const gridStart = 1;
-  const gridEnd = Math.min(5, total);
+  const gridEnd = Math.min(5, total); // top stories
   const trendingStart = gridEnd;
   const remainingAfterGrid = Math.max(0, total - gridEnd);
-  const reserveForMore = remainingAfterGrid >= 8 ? 4 : 0; // keep "More Stories" visible
-  const trendingCount = Math.min(10, Math.max(0, remainingAfterGrid - reserveForMore));
+  const reserveForMore = remainingAfterGrid > 0 ? Math.min(6, Math.max(2, Math.floor(remainingAfterGrid / 3))) : 0;
+  const trendingCount = Math.max(0, Math.min(10, remainingAfterGrid - reserveForMore));
   const moreStart = trendingStart + trendingCount;
 
   renderHero(uniqueList[heroIndex]);
@@ -919,6 +914,31 @@ function dedupeByTitleAndSource(items) {
     seen.add(key);
     return true;
   });
+}
+
+function normalizeUrlForKey(url) {
+  try {
+    const u = new URL(String(url || '').trim());
+    u.hash = '';
+    ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','ref','fbclid','gclid'].forEach((p) => u.searchParams.delete(p));
+    return u.toString().replace(/\/$/, '');
+  } catch (e) {
+    return '';
+  }
+}
+
+function dedupeArticles(items) {
+  const byLink = new Set();
+  const dedupedByLink = [];
+  for (const a of items) {
+    const linkKey = normalizeUrlForKey(a?.url);
+    if (linkKey) {
+      if (byLink.has(linkKey)) continue;
+      byLink.add(linkKey);
+    }
+    dedupedByLink.push(a);
+  }
+  return dedupeByTitleAndSource(dedupedByLink);
 }
 
 function renderHero(a) {
