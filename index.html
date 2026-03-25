@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AIWorld — Your Daily Pulse on Artificial Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="//pagead2.googlesyndication.com">
+<link rel="dns-prefetch" href="//www.googletagmanager.com">
+<link rel="dns-prefetch" href="//checkout.razorpay.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 
 <!-- ═══════════════════════════════════════════════════════
@@ -49,8 +54,6 @@
   3. Replace "rzp_test_XXXXXXXXXXXXXXXXX" below with your Key ID
   4. Test key = rzp_test_... | Live key = rzp_live_...
 ════════════════════════════════════════════════════════ -->
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -225,6 +228,9 @@ footer{margin-top:32px;border-top:0.5px solid var(--border);padding:20px 24px;di
 .sr-meta{font-size:10px;color:var(--text3);margin-top:2px;}
 
 .pulse{display:inline-block;width:6px;height:6px;background:var(--accent);border-radius:50%;animation:blink 1.4s ease-in-out infinite;flex-shrink:0;}
+
+/* Help skip rendering offscreen chunks on long feeds */
+.story-card,.more-item,.sidebar-section{content-visibility:auto;contain-intrinsic-size:1px 220px;}
 </style>
 
 <!-- ═══════════════════════════════════════════════════════
@@ -235,12 +241,18 @@ footer{margin-top:32px;border-top:0.5px solid var(--border);padding:20px 24px;di
   4. Replace BOTH "G-XXXXXXXXXX" below with your real ID
   5. Done! Data starts flowing within 24 hours
 ════════════════════════════════════════════════════════ -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
 <script>
+  const GA_MEASUREMENT_ID = 'G-XXXXXXXXXX';
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-XXXXXXXXXX');
+  if (GA_MEASUREMENT_ID && !GA_MEASUREMENT_ID.includes('XXXXXXXXXX')) {
+    const gaScript = document.createElement('script');
+    gaScript.async = true;
+    gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+    document.head.appendChild(gaScript);
+    gtag('js', new Date());
+    gtag('config', GA_MEASUREMENT_ID);
+  }
 </script>
 </head>
 <body>
@@ -453,7 +465,7 @@ footer{margin-top:32px;border-top:0.5px solid var(--border);padding:20px 24px;di
         or GitHub Pages. The counter auto-increments
         on every visit. No signup needed!
       ════════════════════════════════════════════════ -->
-      <img src="https://hits.sh/shireeshbangar-lab.github.io/aiworld-news.svg?style=flat&color=E8593C&labelColor=1a1a1a" alt="Hit Counter" style="height:18px;border-radius:3px;" onerror="this.replaceWith(document.createTextNode('— add your URL'))">
+      <img src="https://hits.sh/shireeshbangar-lab.github.io/aiworld-news.svg?style=flat&color=E8593C&labelColor=1a1a1a" alt="Hit Counter" loading="lazy" decoding="async" style="height:18px;border-radius:3px;" onerror="this.replaceWith(document.createTextNode('— add your URL'))">
     </div>
     <div id="realtime-dot" style="display:flex;align-items:center;gap:5px;">
       <span style="width:6px;height:6px;background:#2ecc71;border-radius:50%;display:inline-block;animation:blink 1.4s ease-in-out infinite;"></span>
@@ -517,8 +529,29 @@ const PLANS = {
   yearly:  { amount: 99900, desc: 'AIWorld Premium · ₹999/year · Save 58%' }
 };
 
-function payRazorpay(plan) {
+let razorpayScriptPromise = null;
+function loadRazorpayScript() {
+  if (window.Razorpay) return Promise.resolve();
+  if (razorpayScriptPromise) return razorpayScriptPromise;
+  razorpayScriptPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    s.async = true;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Could not load payment SDK'));
+    document.head.appendChild(s);
+  });
+  return razorpayScriptPromise;
+}
+
+async function payRazorpay(plan) {
   const p = PLANS[plan];
+  try {
+    await loadRazorpayScript();
+  } catch (e) {
+    showToast('Payment unavailable right now. Please retry.');
+    return;
+  }
   const rzp = new Razorpay({
     key: RAZORPAY_KEY,
     amount: p.amount,
@@ -922,7 +955,9 @@ function loadFallback(){
 });
 
 loadNews();
-setInterval(loadNews, 10 * 60 * 1000); // Refresh every 10 minutes
+setInterval(() => {
+  if (!document.hidden) loadNews();
+}, 10 * 60 * 1000); // Refresh every 10 minutes when tab is visible
 </script>
 
 <script>
