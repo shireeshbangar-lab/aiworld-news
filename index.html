@@ -586,6 +586,7 @@ function showToast(msg) {
 // ── NEWS ─────────────────────────────────────────────────────
 let API_KEY = localStorage.getItem('aiworld_key') || 'eee266e27ea84439a29b4549a417c93d';
 let allArticles = [], currentFilter = 'all';
+let currentRenderArticles = [];
 
 document.getElementById('live-date').textContent =
   new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ' · AI World News';
@@ -729,11 +730,20 @@ Return ONLY the JSON array. No markdown. No explanation.`
 
 function render() {
   const list = getFiltered();
-  renderHero(list[0]);
-  renderGrid(list.slice(1, 5));
-  renderMore(list.slice(5, 25));   // up to 20 more stories
-  renderTrending(list.slice(0, 10)); // top 10 trending
-  renderTicker(list.slice(0, 15));
+  const uniqueList = dedupeByTitleAndSource(list);
+  currentRenderArticles = uniqueList;
+
+  // Keep all visible sections mutually exclusive so the same story never repeats.
+  const heroIndex = 0;
+  const gridStart = 1;
+  const trendingStart = 5;
+  const moreStart = 15;
+
+  renderHero(uniqueList[heroIndex]);
+  renderGrid(uniqueList.slice(gridStart, trendingStart), gridStart);
+  renderTrending(uniqueList.slice(trendingStart, moreStart), trendingStart);
+  renderMore(uniqueList.slice(moreStart, moreStart + 30), moreStart); // up to 30 more stories
+  renderTicker(uniqueList.slice(0, 15));
 }
 function getFiltered() {
   if (currentFilter==='all') return allArticles;
@@ -756,6 +766,16 @@ function buildSummary(a) {
   return s.length > 220 ? s.slice(0, 220) + '…' : s;
 }
 
+function dedupeByTitleAndSource(items) {
+  const seen = new Set();
+  return items.filter((a) => {
+    const key = `${(a.title || '').toLowerCase().replace(/\s+/g, ' ').trim()}|${(a.source || '').toLowerCase().trim()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function renderHero(a) {
   if (!a) return;
   document.getElementById('hero-area').innerHTML=`
@@ -774,9 +794,9 @@ function renderHero(a) {
     </div>`;
 }
 
-function renderGrid(items) {
+function renderGrid(items, startIndex = 1) {
   document.getElementById('story-grid').innerHTML=items.map((a,i)=>`
-    <div class="story-card" onclick="openArticle(${i+1})">
+    <div class="story-card" onclick="openArticle(${startIndex+i})">
       <div class="story-cat">${esc(a.cat)}</div>
       <div class="story-title">${esc(a.title)}</div>
       <div class="story-summary">${buildSummary(a)}</div>
@@ -787,9 +807,10 @@ function renderGrid(items) {
 let moreStoriesPage = 0;
 const MORE_PER_PAGE = 10;
 
-function renderMore(items) {
+function renderMore(items, startIndex = 15) {
   moreStoriesPage = 0;
   window._moreItems = items;
+  window._moreStartIndex = startIndex;
   const container = document.getElementById('more-stories');
   container.innerHTML = '';
   appendMoreStories();
@@ -807,7 +828,7 @@ function appendMoreStories() {
 
   // Append new items
   slice.forEach((a, i) => {
-    const idx = start + i + 5;
+    const idx = (window._moreStartIndex || 15) + start + i;
     const el = document.createElement('div');
     el.className = 'more-item';
     el.setAttribute('onclick', `openArticle(${idx})`);
@@ -852,9 +873,9 @@ function appendMoreStories() {
 }
 
 
-function renderTrending(items) {
+function renderTrending(items, startIndex = 5) {
   document.getElementById('trend-list').innerHTML=items.map((a,i)=>`
-    <div class="trend-item" onclick="openArticle(${i})">
+    <div class="trend-item" onclick="openArticle(${startIndex+i})">
       <div class="trend-num">${i+1}</div>
       <div>
         <div class="trend-cat">${esc(a.cat)}</div>
@@ -869,7 +890,8 @@ function renderTicker(items) {
   document.getElementById('ticker-track').innerHTML=d.map(a=>`<span>${esc(a.title)}</span><span class="ticker-dot"></span>`).join('');
 }
 function openArticle(i) {
-  const list=getFiltered(); const a=list[i]; if(!a)return;
+  const a = currentRenderArticles[i];
+  if(!a)return;
   document.getElementById('m-cat').textContent=a.cat;
   document.getElementById('m-title').textContent=a.title;
   document.getElementById('m-meta').textContent=`${a.source} · ${a.date}`;
